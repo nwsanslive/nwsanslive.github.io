@@ -1,0 +1,97 @@
+<html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>REnwsans的个人名片</title>
+    <style>
+        body {
+            background-color: #c9c9c9;
+            margin: 0;
+            padding: 0;
+            opacity: 0;
+            transition: opacity 4s ease-in-out;
+        }
+        .container {
+            width: 90%;
+            margin: 0 auto;
+            background-color: #a8c1e9;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 2s ease-in-out, transform 2s ease-in-out;
+        }
+        .header {
+            text-align: center;
+            padding: 20px 0;
+        }
+        .header img {
+            border-radius: 50%;
+            width: 150px;
+            height: 150px;
+        }
+        .header h1 {
+            margin: 10px 0 5px;
+        }
+        .header p {
+            color: #777;
+        }
+        .section {
+            margin: 20px 0;
+        }
+        .section h2 {
+            border-bottom: 2px solid #f4f4f4;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+        }
+        .skills, .projects, .contact {
+            list-style: none;
+            padding: 0;
+        }
+        .skills li, .projects li, .contact li {
+            margin: 10px 0;
+        }
+        .contact a {
+            color: #3498db;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="sang.jpg" alt="头像">
+            <h1>REnwsans</h1>
+        </div>
+        <div class="section">
+            </ul>
+        </div>
+        <div class="section">
+            <h2>生日了🎈!可以给我打些RMB吗~</h2>
+            <ul class="projects">
+                <li>微信支付</li>
+            <img src="WeChat_Pay.png"
+            </ul>
+        </div>
+        <div class="section">
+            <h2>联系方式</h2>
+            <ul class="contact"
+                <li>WeChat: nwsanslive</li>
+                <li>QQ: 3783850199</li>
+                <li>Email: <a href="mailto:nwsanslive@outlook.com">nwsanslive@outlook.com</a></li>
+                <li>GitHub: <a href="https://github.com/nwsanslive">github.com/nwsanslive</a></li>
+                <li>itch: <a href="https://itch.io/profile/nwsanslive">itch.io/profile/nwsanslive</a></li>
+            <li>Made With Copilot<li>
+            </ul>
+        </div>
+    </div>
+    <script>
+        window.addEventListener('load', () => {
+            document.body.style.opacity = '1';
+            document.querySelector('.container').style.opacity = '1';
+            document.querySelector('.container').style.transform = 'translateY(0)';
+        });
+    </script>
+</body>
+</html>
