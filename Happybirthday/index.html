@@ -10,6 +10,8 @@
             font-family: 'Arial', sans-serif;
             text-align: center;
             padding: 50px;
+            opacity: 0;
+            transition: opacity 2s ease-in-out;
         }
         h1 {
             color: #87cefa; /* 浅蓝色 */
@@ -21,7 +23,7 @@
             color: #4682b4;
             font-size: 1.5em;
         }
-        .balloon {
+        .cake {
             position: absolute;
             top: -50px;
             font-size: 2em;
@@ -32,6 +34,15 @@
             10% { opacity: 1; }
             100% { top: 100vh; opacity: 0; }
         }
+        .invitation {
+            margin-top: 30px;
+            padding: 20px;
+            border: 2px dashed #87cefa;
+            background-color: #fff;
+            color: #000;
+            font-size: 1.2em;
+            text-align: left;
+        }
         .time {
             color: #4682b4;
             font-size: 1em;
@@ -41,13 +52,14 @@
     </style>
     <script>
         window.onload = function() {
+            document.body.style.opacity = 1;
             for (let i = 0; i < 20; i++) {
-                let balloon = document.createElement('div');
-                balloon.className = 'balloon';
-                balloon.style.left = Math.random() * 100 + 'vw';
-                balloon.style.animationDelay = Math.random() * 5 + 's';
-                balloon.innerHTML = '🎉';
-                document.body.appendChild(balloon);
+                let cake = document.createElement('div');
+                cake.className = 'cake';
+                cake.style.left = Math.random() * 100 + 'vw';
+                cake.style.animationDelay = Math.random() * 5 + 's';
+                cake.innerHTML = '🎉';
+                document.body.appendChild(cake);
             }
             updateTime();
             setInterval(updateTime, 1000);
@@ -65,8 +77,10 @@
     <div id="time" class="time"></div>
     <p>祝晴天和爸爸生日快乐！希望你们有一个美好的一天，充满欢乐和惊喜！</p>
     <p>愿你们的每一天都像今天一样特别，充满笑声和爱。希望你们在新的一岁里，健康快乐，梦想成真！</p>
-    <div class="footer">
-        <p>© 2025 REnwsans</p>
+        <div class="image">
+        <img src="1.jpg" alt="晴天" width="100%">
     </div>
+    <div class="footer">
+            <p>© 2025 REnwsans</p>
 </body>
 </html>
