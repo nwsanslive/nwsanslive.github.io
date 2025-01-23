@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎉🎉</title>
+    <style>
+        body {
+            background-color: #ffb6c1; /* 更柔和的粉色 */
+            font-family: 'Arial', sans-serif;
+            text-align: center;
+            padding: 50px;
+            opacity: 0;
+            transition: opacity 2s ease-in-out;
+        }
+        h1 {
+            color: #87cefa; /* 浅蓝色 */
+            font-size: 3em;
+            margin-bottom: 20px;
+            text-align: left; /* 靠左放置 */
+        }
+        p {
+            color: #4682b4;
+            font-size: 1.5em;
+        }
+        .cake {
+            position: absolute;
+            top: -50px;
+            font-size: 2em;
+            animation: fall 5s infinite;
+        }
+        @keyframes fall {
+            0% { top: -50px; opacity: 0; }
+            10% { opacity: 1; }
+            100% { top: 100vh; opacity: 0; }
+        }
+        .invitation {
+            margin-top: 30px;
+            padding: 20px;
+            border: 2px dashed #87cefa;
+            background-color: #fff;
+            color: #000;
+            font-size: 1.2em;
+            text-align: left;
+        }
+        .time {
+            color: #4682b4;
+            font-size: 1em;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+    </style>
+    <script>
+        window.onload = function() {
+            document.body.style.opacity = 1;
+            for (let i = 0; i < 20; i++) {
+                let cake = document.createElement('div');
+                cake.className = 'cake';
+                cake.style.left = Math.random() * 100 + 'vw';
+                cake.style.animationDelay = Math.random() * 5 + 's';
+                cake.innerHTML = '🎉';
+                document.body.appendChild(cake);
+            }
+            updateTime();
+            setInterval(updateTime, 1000);
+        };
+
+        function updateTime() {
+            const now = new Date();
+            const timeString = now.toLocaleString();
+            document.getElementById('time').textContent = `当前时间：${timeString}`;
+        }
+    </script>
+</head>
+<body>
+    <h1>Happy birthday!🎂</h1>
+    <div id="time" class="time"></div>
+    <p>祝晴天和爸爸生日快乐！希望你们有一个美好的一天，充满欢乐和惊喜！</p>
+    <p>愿你们的每一天都像今天一样特别，充满笑声和爱。希望你们在新的一岁里，健康快乐，梦想成真！</p>
+        <div class="image">
+        <img src="1.jpg" alt="晴天" width="100%">
+    <div class="invitation">
+        <h2>邀请你！</h2>
+        <p>诚挚邀请你参加生日派对，一起庆祝这个特别的日子！</p>
+        <p>日期：2025年1月23日</p>
+        <p>时间：下午6/7点</p>
+        <p>注:还有好吃的哦😋</p>
+    </div>
+    <div class="footer">
+            <p>© 2025 REnwsans</p>
+</body>
+</html>
