@@ -11,16 +11,17 @@
         #messages {flex:1;overflow-y:auto;padding:15px 15px 80px;display:flex;flex-direction:column;gap:20px;-webkit-overflow-scrolling:touch;scroll-behavior:smooth;}
         .message-wrapper {width:100%;display:flex;flex-direction:column;}
         .timestamp {font-size:12px;color:#888;margin:0 auto 8px;text-align:center;}
-        .message-container {display:flex;align-items:flex-end;gap:8px;max-width:75%;}
+        .message-container {display:flex;align-items:flex-end;gap:10px;max-width:80%;}
         .sent .message-container {margin-left:auto;flex-direction:row-reverse;}
         .received .message-container {margin-right:auto;}
-        .message {word-wrap:break-word;white-space:pre-wrap;line-height:1.5;font-size:16px;}
+        .message {max-width:100%;}
         .text-bubble {padding:11px 16px;border-radius:20px;}
         .sent .text-bubble {background:#26b460;color:#ffffff;}
         .received .text-bubble {background:#2c2c2c;color:#e0e0e0;}
-        .media-img, .media-video {max-width:100%;width:auto;border-radius:12px;display:block;cursor:pointer;}
+        /* 图片视频完全无包裹 */
+        .media-img, .media-video {max-width:100%;height:auto;border-radius:12px;display:block;}
         .media-video {background:#000;}
-        .more-btn {width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;font-size:18px;opacity:0;transition:opacity 0.2s;cursor:pointer;}
+        .more-btn {width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;font-size:20px;opacity:0;transition:opacity 0.2s;cursor:pointer;flex-shrink:0;}
         .message-container:hover .more-btn {opacity:1;}
         .file-info {margin-top:8px;font-size:14px;opacity:0.9;}
         .file-link {color:#5ebff9;text-decoration:underline;display:block;margin-top:4px;}
@@ -423,7 +424,6 @@
         };
         messageInput.onfocus = () => setTimeout(scrollToBottom, 400);
 
-        // 每2秒刷新一次（实时效果）
         setInterval(() => { if (currentRole) loadMessages(); }, 2000);
     </script>
 </body>
