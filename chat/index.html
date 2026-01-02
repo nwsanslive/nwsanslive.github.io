@@ -14,10 +14,11 @@
         .message {max-width:75%;word-wrap:break-word;white-space:pre-wrap;line-height:1.5;font-size:16px;}
         .sent {align-self:flex-end;}
         .received {align-self:flex-start;}
-        /* 文字消息气泡 */
-        .text-bubble {padding:11px 16px;border-radius:20px;background:#95EC69;color:#000;}
-        .received .text-bubble {background:#ffffff;color:#000;}
-        /* 图片视频：完全无气泡包裹，直接占满 */
+        /* 文字和文件气泡 */
+        .text-bubble {padding:11px 16px;border-radius:20px;}
+        .sent .text-bubble {background:#26b460;color:#ffffff;} /* 发送方深绿 */
+        .received .text-bubble {background:#2c2c2c;color:#e0e0e0;} /* 接收方深灰 */
+        /* 图片视频：完全无气泡包裹 */
         .media-img, .media-video {
             max-width:100%;width:auto;border-radius:12px;display:block;cursor:pointer;}
         .media-video {background:#000;}
@@ -25,15 +26,15 @@
         .file-link {color:#5ebff9;text-decoration:underline;display:block;margin-top:4px;}
         #input-area {flex-shrink:0;display:flex;align-items:center;padding:10px 12px;background:#1e1e1e;padding-bottom:calc(env(safe-area-inset-bottom)+10px);gap:8px;}
         #attach-button {
-            width:44px;height:44px;background:#95EC69;color:#000;border:none;border-radius:22px;cursor:pointer;font-size:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+            width:44px;height:44px;background:#26b460;color:#ffffff;border:none;border-radius:22px;cursor:pointer;font-size:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0;
         }
         #message-input {flex:1;height:44px;padding:0 16px;border:none;border-radius:22px;background:#333333;color:#fff;font-size:16px;}
         #message-input:focus {outline:none;}
         #send-button {
-            margin-left:8px;padding:0 20px;height:44px;background:#95EC69;color:#000;border:none;border-radius:22px;cursor:pointer;font-size:16px;font-weight:bold;flex-shrink:0;
+            margin-left:8px;padding:0 20px;height:44px;background:#26b460;color:#ffffff;border:none;border-radius:12px;cursor:pointer;font-size:16px;font-weight:bold;flex-shrink:0;
         }
         #role-selection {flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;background:#1e1e1e;}
-        #role-selection button {margin:15px;padding:14px 32px;font-size:18px;background:#95EC69;color:#000;border:none;border-radius:12px;cursor:pointer;}
+        #role-selection button {margin:15px;padding:14px 32px;font-size:18px;background:#26b460;color:#ffffff;border:none;border-radius:12px;cursor:pointer;}
         #file-input {display:none;}
         #fullscreen-overlay {display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.95);align-items:center;justify-content:center;z-index:9999;}
         #fullscreen-img {max-width:95%;max-height:95%;border-radius:8px;}
@@ -262,7 +263,7 @@
             if (!text) return;
 
             const entry = {type: 'text', content: text};
-            const wrapper = createMessageWrapper({...entry, time: new Date().toISOString(), role: currentRole});  // 强制己方
+            const wrapper = createMessageWrapper({...entry, time: new Date().toISOString(), role: currentRole});
             messagesDiv.appendChild(wrapper);
             scrollToBottom();
 
@@ -287,7 +288,7 @@
                         url: uploaded.url
                     };
 
-                    const wrapper = createMessageWrapper({...entry, time: new Date().toISOString(), role: currentRole});  // 强制己方
+                    const wrapper = createMessageWrapper({...entry, time: new Date().toISOString(), role: currentRole});
                     messagesDiv.appendChild(wrapper);
                     scrollToBottom();
 
@@ -305,7 +306,6 @@
             roleSelection.style.display = 'none';
             chatContainer.style.display = 'flex';
             loadMessages();
-            // 选择身份后立即滚到底部
             setTimeout(scrollToBottom, 500);
         }
 
