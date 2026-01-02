@@ -90,12 +90,18 @@
             font-size: 14px;
             color: #aaa;
         }
+        #error {
+            padding: 20px;
+            text-align: center;
+            color: #ff6b6b;
+        }
     </style>
 </head>
 <body>
+
     <div id="role-selection">
-        <h1>聊天</h1>
-        <p>记录全设备同步</p>
+        <h1>Chat</h1>
+        <p>选择你的身份（聊天记录全设备同步）</p>
         <button onclick="selectRole('弟弟')">弟弟</button>
         <button onclick="selectRole('哥哥')">哥哥</button>
     </div>
@@ -109,26 +115,43 @@
         </div>
     </div>
 
+    <div id="error" style="display:none;"></div>
+
     <script>
-        // ==================== 请在这里修改你的配置 ====================
-        const GITHUB_TOKEN = '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'; // 你的 Personal Access Token（必须）
-        const REPO = 'nwsanslive/nwsanslive.github.io'; // 格式：用户名/仓库名，例如 xiaoming/brother-chat
-        const FILE_PATH = 'chat-history.json'; // 储存在仓库里的文件名
-        const BRANCH = 'main'; // 通常是 main 或 master
-        // ===========================================================
+        // ==================== 在这里改成你自己的仓库信息 ====================
+        const REPO = 'nwsanslive/nwsanslive.github.io';  // 例如: xiaoming123/brother-chat
+        const FILE_PATH = 'chat-history.json';
+        const BRANCH = 'main';  // 如果你的分支是 master，就改成 'master'
+        // =====================================================================
 
         const API_URL = `https://api.github.com/repos/${REPO}/contents/${FILE_PATH}`;
-        
+
+        // 从 URL 获取 token，例如：?token=ghp_xxx
+        const urlParams = new URLSearchParams(window.location.search);
+        const GITHUB_TOKEN = urlParams.get('token');
+
         let currentRole = null;
-        let currentSha = null; // 文件的 sha，用于更新
         const messagesDiv = document.getElementById('messages');
         const chatContainer = document.getElementById('chat-container');
         const roleSelection = document.getElementById('role-selection');
         const messageInput = document.getElementById('message-input');
         const sendButton = document.getElementById('send-button');
         const statusDiv = document.getElementById('status');
+        const errorDiv = document.getElementById('error');
 
-        // 从 GitHub 加载聊天记录
+        // 检查是否有 token
+        if (!GITHUB_TOKEN || !GITHUB_TOKEN.startsWith('ghp_')) {
+            document.body.innerHTML = `
+                <div style="padding:50px;text-align:center;color:#fff;">
+                    <h2>缺少或无效的 Token</h2>
+                    <p>请使用正确的带 token 的链接访问</p>
+                    <p style="background:#333;padding:15px;border-radius:10px;margin:20px auto;max-width:800px;word-break:break-all;">
+                        ${window.location.origin}${window.location.pathname}?token=ghp_你的token粘贴在这里
+                    </p>
+                </div>`;
+            throw new Error("No valid token");
+        }
+
         async function loadMessages() {
             try {
                 const response = await fetch(API_URL, {
@@ -139,27 +162,25 @@
                 });
 
                 if (response.status === 404) {
-                    // 文件不存在，创建空记录
                     await createEmptyFile();
                     renderMessages([]);
                     statusDiv.textContent = '新聊天已开始';
                     return;
                 }
 
-                if (!response.ok) throw new Error('加载失败');
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
                 const data = await response.json();
-                currentSha = data.sha;
                 const content = JSON.parse(atob(data.content));
                 renderMessages(content);
                 statusDiv.textContent = '记录已同步';
             } catch (e) {
-                statusDiv.textContent = '加载失败：' + e.message;
-                renderMessages([]);
+                errorDiv.style.display = 'block';
+                errorDiv.textContent = '加载失败：' + (e.message || '网络错误');
+                statusDiv.textContent = '';
             }
         }
 
-        // 创建空文件
         async function createEmptyFile() {
             const response = await fetch(API_URL, {
                 method: 'PUT',
@@ -169,17 +190,13 @@
                 },
                 body: JSON.stringify({
                     message: 'init chat history',
-                    content: btoa(JSON.stringify([])),
+                    content: btoa('[]'),
                     branch: BRANCH
                 })
             });
-            if (response.ok) {
-                const data = await response.json();
-                currentSha = data.content.sha;
-            }
+            if (!response.ok) throw new Error('创建文件失败');
         }
 
-        // 渲染消息
         function renderMessages(history) {
             messagesDiv.innerHTML = '';
             history.forEach(msg => {
@@ -196,12 +213,11 @@
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
 
-        // 发送消息并上传到 GitHub
         async function sendMessage() {
             const text = messageInput.value.trim();
-            if (!text || !currentRole) return;
+            if (!text) return;
 
-            // 先本地显示（乐观更新）
+            // 乐观显示
             const div = document.createElement('div');
             div.classList.add('message', 'sent');
             div.textContent = text;
@@ -209,13 +225,10 @@
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
             messageInput.value = '';
 
-            statusDiv.textContent = '正在同步到 GitHub...';
+            statusDiv.textContent = '正在同步...';
 
             try {
-                // 获取最新内容（防止冲突）
-                const getResp = await fetch(API_URL, {
-                    headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
-                });
+                const getResp = await fetch(API_URL, { headers: { 'Authorization': `token ${GITHUB_TOKEN}` } });
                 let history = [];
                 let sha = null;
                 if (getResp.ok) {
@@ -224,10 +237,8 @@
                     sha = data.sha;
                 }
 
-                // 添加新消息
                 history.push({ role: currentRole, text: text, time: new Date().toISOString() });
 
-                // 上传更新
                 const putResp = await fetch(API_URL, {
                     method: 'PUT',
                     headers: {
@@ -235,8 +246,8 @@
                         'Accept': 'application/vnd.github.v3+json'
                     },
                     body: JSON.stringify({
-                        message: `new message from ${currentRole}`,
-                        content: btoa(unescape(encodeURIComponent(JSON.stringify(history)))), // 正确处理中文
+                        message: `message from ${currentRole}`,
+                        content: btoa(unescape(encodeURIComponent(JSON.stringify(history)))),
                         sha: sha,
                         branch: BRANCH
                     })
@@ -248,11 +259,10 @@
                     throw new Error('上传失败');
                 }
             } catch (e) {
-                statusDiv.textContent = '同步失败：' + e.message;
+                statusDiv.textContent = '同步失败';
             }
         }
 
-        // 选择身份
         function selectRole(role) {
             currentRole = role;
             roleSelection.style.display = 'none';
@@ -260,15 +270,12 @@
             loadMessages();
         }
 
-        // 事件绑定
         sendButton.onclick = sendMessage;
-        messageInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                sendMessage();
-            }
+        messageInput.addEventListener('keydown', e => {
+            if (e.key === 'Enter') sendMessage();
         });
 
-        // 每30秒自动刷新一次记录（防止另一设备发消息时没看到）
+        // 每30秒自动刷新
         setInterval(() => {
             if (currentRole) loadMessages();
         }, 30000);
