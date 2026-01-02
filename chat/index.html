@@ -8,44 +8,39 @@
         body {background-color:#121212;color:#e0e0e0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;margin:0;padding:0;height:100vh;display:flex;flex-direction:column;}
         #header {height:56px;background:#1e1e1e;display:flex;align-items:center;padding:0 16px;font-size:18px;font-weight:bold;border-bottom:1px solid #333;flex-shrink:0;}
         .status {text-align:center;padding:6px;font-size:13px;color:#aaa;flex-shrink:0;}
-        #messages {flex:1;overflow-y:auto;padding:15px;display:flex;flex-direction:column;gap:12px;-webkit-overflow-scrolling:touch;scroll-behavior:smooth;}
+        #messages {flex:1;overflow-y:auto;padding:15px 15px 10px;display:flex;flex-direction:column;gap:20px;-webkit-overflow-scrolling:touch;scroll-behavior:smooth;}
+        .message-wrapper {display:flex;flex-direction:column;align-items:center;width:100%;}
+        .timestamp {font-size:12px;color:#888;margin-bottom:8px;}
         .message {max-width:75%;padding:11px 16px;border-radius:20px;word-wrap:break-word;white-space:pre-wrap;line-height:1.5;font-size:16px;position:relative;}
         .sent {align-self:flex-end;background:#95EC69;color:#000;}
         .received {align-self:flex-start;background:#ffffff;color:#000;}
-        .media-img {max-width:100%;border-radius:12px;margin-top:8px;cursor:pointer;}
-        .media-video {max-width:100%;border-radius:12px;margin-top:8px;}
-        .file-link {color:#5ebff9;text-decoration:underline;margin-top:8px;display:block;font-size:15px;}
-        #input-area {flex-shrink:0;display:flex;align-items:center;padding:10px 15px;background:#1e1e1e;padding-bottom:calc(env(safe-area-inset-bottom)+10px);}
+        .media-img, .media-video {
+            width:100%;max-width:100%;border-radius:12px;margin:0;cursor:pointer;display:block;
+        }
+        .media-video {background:#000;}
+        .file-info {margin-top:8px;font-size:14px;opacity:0.9;}
+        .file-link {color:#5ebff9;text-decoration:underline;display:block;margin-top:4px;}
+        #input-area {flex-shrink:0;display:flex;align-items:center;padding:10px 12px;background:#1e1e1e;padding-bottom:calc(env(safe-area-inset-bottom)+10px);gap:8px;}
+        #attach-button {
+            width:44px;height:44px;background:#95EC69;color:#000;border:none;border-radius:22px;cursor:pointer;font-size:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+        }
         #message-input {flex:1;height:44px;padding:0 16px;border:none;border-radius:22px;background:#333333;color:#fff;font-size:16px;}
         #message-input:focus {outline:none;}
-        #attach-button, #send-button {
-            margin-left:10px;width:44px;height:44px;background:#95EC69;color:#000;border:none;border-radius:22px;cursor:pointer;font-size:20px;display:flex;align-items:center;justify-content:center;}
+        #send-button {
+            margin-left:8px;padding:0 20px;height:44px;background:#95EC69;color:#000;border:none;border-radius:22px;cursor:pointer;font-size:16px;font-weight:bold;flex-shrink:0;
+        }
         #role-selection {flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;background:#1e1e1e;}
         #role-selection button {margin:15px;padding:14px 32px;font-size:18px;background:#95EC69;color:#000;border:none;border-radius:12px;cursor:pointer;}
         #file-input {display:none;}
-
-        /* 全屏图片查看器 */
-        #fullscreen-overlay {
-            display:none;
-            position:fixed;
-            top:0;left:0;right:0;bottom:0;
-            background:rgba(0,0,0,0.9);
-            align-items:center;
-            justify-content:center;
-            z-index:9999;
-        }
-        #fullscreen-img {
-            max-width:95%;
-            max-height:95%;
-            border-radius:8px;
-        }
+        #fullscreen-overlay {display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.95);align-items:center;justify-content:center;z-index:9999;}
+        #fullscreen-img {max-width:95%;max-height:95%;border-radius:8px;}
     </style>
 </head>
 <body>
 
     <div id="role-selection">
         <h1>Chat</h1>
-        <p>选择你的身份</p>
+        <p>选择你的身份(记录全设备同步)</p>
         <button onclick="selectRole('弟弟')">弟弟</button>
         <button onclick="selectRole('哥哥')">哥哥</button>
     </div>
@@ -62,9 +57,8 @@
         </div>
     </div>
 
-    <!-- 全屏图片查看器 -->
     <div id="fullscreen-overlay">
-        <img id="fullscreen-img" src="" alt="全屏图片">
+        <img id="fullscreen-img" src="" alt="全屏查看">
     </div>
 
     <script>
@@ -72,12 +66,14 @@
         const HISTORY_PATH = 'chat/chat-history.json';
         const FILES_FOLDER = 'chat/files';
         const BRANCH = 'main';
-
         const HISTORY_API = `https://api.github.com/repos/${REPO}/contents/${HISTORY_PATH}`;
+
         const urlParams = new URLSearchParams(window.location.search);
         const GITHUB_TOKEN = urlParams.get('token');
 
         let currentRole = null;
+        let lastTime = null; // 用于判断是否显示时间戳
+
         const messagesDiv = document.getElementById('messages');
         const chatContainer = document.getElementById('chat-container');
         const roleSelection = document.getElementById('role-selection');
@@ -86,46 +82,101 @@
         const attachButton = document.getElementById('attach-button');
         const fileInput = document.getElementById('file-input');
         const statusDiv = document.getElementById('status');
-        const header = document.getElementById('header');
-
-        // 全屏图片相关
         const fullscreenOverlay = document.getElementById('fullscreen-overlay');
         const fullscreenImg = document.getElementById('fullscreen-img');
 
         if (!GITHUB_TOKEN || !GITHUB_TOKEN.startsWith('ghp_')) {
-            document.body.innerHTML = `<div style="padding:50px;text-align:center;color:#fff;"><h2>缺少 Token</h2><p>请使用带 ?token= 的链接</p></div>`;
+            document.body.innerHTML = `<div style="padding:50px;text-align:center;color:#fff;"><h2>缺少 Token</h2><p>请使用带 ?token= 的链接访问</p></div>`;
             throw new Error("No token");
+        }
+
+        // 时间格式：X月Xd日 XX:XX
+        function formatTime(dateStr) {
+            const d = new Date(dateStr);
+            const month = d.getMonth() + 1;
+            const date = d.getDate();
+            const hour = d.getHours().toString().padStart(2, '0');
+            const minute = d.getMinutes().toString().padStart(2, '0');
+            return `${month}月${date}日 ${hour}:${minute}`;
+        }
+
+        // 超过5分钟才显示时间戳
+        function shouldShowTimestamp(currentTime) {
+            if (!lastTime) return true;
+            const diff = (new Date(currentTime) - new Date(lastTime)) / 1000 / 60;
+            return diff > 5;
+        }
+
+        function createMessageWrapper(item) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'message-wrapper';
+
+            if (shouldShowTimestamp(item.time)) {
+                const timeDiv = document.createElement('div');
+                timeDiv.className = 'timestamp';
+                timeDiv.textContent = formatTime(item.time);
+                wrapper.appendChild(timeDiv);
+                lastTime = item.time;
+            }
+
+            const div = document.createElement('div');
+            div.classList.add('message', item.role === currentRole ? 'sent' : 'received');
+
+            if (item.type === 'text') {
+                div.textContent = item.content;
+            } else if (item.type === 'image') {
+                const img = document.createElement('img');
+                img.src = item.url;
+                img.className = 'media-img';
+                img.onclick = () => {
+                    fullscreenImg.src = item.url;
+                    fullscreenOverlay.style.display = 'flex';
+                };
+                div.appendChild(img);
+            } else if (item.type === 'video') {
+                const video = document.createElement('video');
+                video.src = item.url;
+                video.controls = true;
+                video.className = 'media-video';
+                div.appendChild(video);
+            } else { // file
+                const nameDiv = document.createElement('div');
+                nameDiv.textContent = item.filename;
+                nameDiv.className = 'file-info';
+                div.appendChild(nameDiv);
+
+                const a = document.createElement('a');
+                a.href = item.url;
+                a.textContent = '点击下载';
+                a.className = 'file-link';
+                a.target = '_blank';
+                div.appendChild(a);
+            }
+            wrapper.appendChild(div);
+            return wrapper;
         }
 
         function scrollToBottom() {
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
 
-        // 点击图片放大
-        function addImageClickListener(img) {
-            img.onclick = () => {
-                fullscreenImg.src = img.src;
-                fullscreenOverlay.style.display = 'flex';
-            };
-        }
-
-        // 关闭全屏图片
-        fullscreenOverlay.onclick = () => {
-            fullscreenOverlay.style.display = 'none';
-        };
-
         async function loadMessages() {
             try {
                 const res = await fetch(HISTORY_API, {headers: {'Authorization': `token ${GITHUB_TOKEN}`}});
                 if (res.status === 404) {
                     await createEmptyHistory();
-                    renderMessages([]);
+                    messagesDiv.innerHTML = '';
                     statusDiv.textContent = '新聊天已开始';
+                    lastTime = null;
                     return;
                 }
                 const data = await res.json();
                 const history = JSON.parse(decodeURIComponent(escape(atob(data.content))));
-                renderMessages(history);
+                messagesDiv.innerHTML = '';
+                lastTime = null;
+                history.forEach(item => {
+                    messagesDiv.appendChild(createMessageWrapper(item));
+                });
                 statusDiv.textContent = '记录已同步';
                 scrollToBottom();
             } catch (e) {
@@ -141,58 +192,25 @@
             });
         }
 
-        function renderMessages(history) {
-            messagesDiv.innerHTML = '';
-            history.forEach(item => {
-                const div = document.createElement('div');
-                div.classList.add('message', item.role === currentRole ? 'sent' : 'received');
-
-                if (item.type === 'text') {
-                    div.textContent = item.content;
-                } else if (item.type === 'image') {
-                    const img = document.createElement('img');
-                    img.src = item.url;
-                    img.className = 'media-img';
-                    addImageClickListener(img);  // 添加点击放大
-                    div.appendChild(img);
-                } else if (item.type === 'video') {
-                    const video = document.createElement('video');
-                    video.src = item.url;
-                    video.controls = true;
-                    video.className = 'media-video';
-                    div.appendChild(video);
-                } else { // file
-                    // 只显示下载链接，不显示文件名
-                    const a = document.createElement('a');
-                    a.href = item.url;
-                    a.textContent = '点击下载';
-                    a.className = 'file-link';
-                    a.target = '_blank';
-                    div.appendChild(a);
-                }
-                messagesDiv.appendChild(div);
-            });
-            scrollToBottom();
-        }
-
         async function uploadFile(file) {
-            const ext = file.name.split('.').pop();
-            const filename = Date.now() + '_' + Math.random().toString(36).substr(2, 9) + '.' + ext;
+            statusDiv.textContent = `上传中：${file.name}`;
+            const ext = file.name.split('.').pop() || '';
+            const filename = Date.now() + '_' + Math.random().toString(36).substr(2, 9) + (ext ? '.' + ext : '');
             const path = `${FILES_FOLDER}/${filename}`;
             const url = `https://api.github.com/repos/${REPO}/contents/${path}`;
 
             const reader = new FileReader();
-            const base64 = await new Promise(resolve => {
+            const base64 = await new Promise((resolve, reject) => {
                 reader.onload = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = reject;
                 reader.readAsDataURL(file);
-                reader.onerror = () => reject(reader.error);
             });
 
             const res = await fetch(url, {
                 method: 'PUT',
                 headers: {'Authorization': `token ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github.v3+json'},
                 body: JSON.stringify({
-                    message: `upload ${filename}`,
+                    message: `upload ${file.name}`,
                     content: base64,
                     branch: BRANCH
                 })
@@ -201,8 +219,7 @@
             if (!res.ok) throw new Error('上传失败');
             return {
                 filename: file.name,
-                url: `https://raw.githubusercontent.com/${REPO}/${BRANCH}/${path}`,
-                rawPath: path
+                url: `https://raw.githubusercontent.com/${REPO}/${BRANCH}/${path}`
             };
         }
 
@@ -235,81 +252,56 @@
 
         async function sendMessage() {
             const text = messageInput.value.trim();
-            if (text) {
-                const div = document.createElement('div');
-                div.classList.add('message', 'sent');
-                div.textContent = text;
-                messagesDiv.appendChild(div);
-                scrollToBottom();
-                await addToHistory({type: 'text', content: text});
-                messageInput.value = '';
-                statusDiv.textContent = '已同步';
-            }
+            if (!text) return;
+
+            const entry = {type: 'text', content: text};
+            const wrapper = createMessageWrapper({...entry, time: new Date().toISOString()});
+            messagesDiv.appendChild(wrapper);
+            scrollToBottom();
+
+            await addToHistory(entry);
+            messageInput.value = '';
+            statusDiv.textContent = '已同步';
         }
 
         async function sendFiles() {
             const files = fileInput.files;
             if (files.length === 0) return;
 
-            statusDiv.textContent = '正在上传附件...';
             for (let file of files) {
                 try {
                     const uploaded = await uploadFile(file);
-                    const type = file.type.startsWith('image/') ? 'image' : 
+                    const type = file.type.startsWith('image/') ? 'image' :
                                  file.type.startsWith('video/') ? 'video' : 'file';
 
-                    await addToHistory({
+                    const entry = {
                         type: type,
-                        content: uploaded.url,
                         filename: uploaded.filename,
                         url: uploaded.url
-                    });
+                    };
 
-                    // 本地预览
-                    const div = document.createElement('div');
-                    div.classList.add('message', 'sent');
-
-                    if (type === 'image') {
-                        const img = document.createElement('img');
-                        img.src = uploaded.url;
-                        img.className = 'media-img';
-                        addImageClickListener(img);
-                        div.appendChild(img);
-                    } else if (type === 'video') {
-                        const video = document.createElement('video');
-                        video.src = uploaded.url;
-                        video.controls = true;
-                        video.className = 'media-video';
-                        div.appendChild(video);
-                    } else {
-                        // 文件只显示下载链接
-                        const a = document.createElement('a');
-                        a.href = uploaded.url;
-                        a.textContent = '点击下载';
-                        a.className = 'file-link';
-                        a.target = '_blank';
-                        div.appendChild(a);
-                    }
-                    messagesDiv.appendChild(div);
+                    const wrapper = createMessageWrapper({...entry, time: new Date().toISOString()});
+                    messagesDiv.appendChild(wrapper);
                     scrollToBottom();
+
+                    await addToHistory(entry);
                 } catch (e) {
-                    statusDiv.textContent = '附件上传失败';
-                    console.error(e);
+                    statusDiv.textContent = '上传失败';
                 }
             }
-            statusDiv.textContent = '已同步';
+            statusDiv.textContent = '所有附件已同步';
             fileInput.value = '';
         }
 
         function selectRole(role) {
             currentRole = role;
-            header.textContent = role === '弟弟' ? '哥哥' : '弟弟';
             roleSelection.style.display = 'none';
             chatContainer.style.display = 'flex';
             loadMessages();
         }
 
-        // 事件绑定
+        fullscreenOverlay.onclick = () => fullscreenOverlay.style.display = 'none';
+
         attachButton.onclick = () => fileInput.click();
         fileInput.onchange = sendFiles;
         sendButton.onclick = sendMessage;
