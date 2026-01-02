@@ -5,148 +5,54 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chat</title>
     <style>
-        body {
-            background-color: #121212;
-            color: #e0e0e0;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-        /* 顶部栏：固定 */
-        #header {
-            height: 56px;
-            background-color: #1e1e1e;
-            display: flex;
-            align-items: center;
-            padding: 0 16px;
-            font-size: 18px;
-            font-weight: bold;
-            border-bottom: 1px solid #333;
-            flex-shrink: 0;
-        }
-        /* 中间消息区：可滚动 */
-        #messages {
-            flex: 1;
-            overflow-y: auto;
-            padding: 15px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            -webkit-overflow-scrolling: touch;
-            scroll-behavior: smooth;
-        }
-        .message {
-            max-width: 75%;
-            padding: 11px 16px;
-            border-radius: 20px;
-            word-wrap: break-word;
-            white-space: pre-wrap;
-            line-height: 1.5;
-            font-size: 16px;
-        }
-        .sent {
-            align-self: flex-end;
-            background-color: #95EC69;
-            color: #000;
-        }
-        .received {
-            align-self: flex-start;
-            background-color: #ffffff;
-            color: #000;
-        }
-        /* 底部输入区：固定 */
-        #input-area {
-            flex-shrink: 0;
-            display: flex;
-            align-items: center;
-            padding: 10px 15px;
-            background-color: #1e1e1e;
-            padding-bottom: calc(env(safe-area-inset-bottom) + 10px); /* 防底部导航栏遮挡 */
-        }
-        #message-input {
-            flex: 1;
-            height: 44px;
-            padding: 0 16px;
-            border: none;
-            border-radius: 22px;
-            background-color: #333333;
-            color: #ffffff;
-            font-size: 16px;
-        }
-        #message-input:focus {
-            outline: none;
-        }
-        #send-button {
-            margin-left: 12px;
-            width: 68px;
-            height: 44px;
-            background-color: #95EC69;
-            color: #000;
-            border: none;
-            border-radius: 22px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: bold;
-        }
-        .status {
-            text-align: center;
-            padding: 6px;
-            font-size: 13px;
-            color: #aaa;
-            flex-shrink: 0;
-        }
-        #role-selection {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            background-color: #1e1e1e;
-        }
-        #role-selection button {
-            margin: 15px;
-            padding: 14px 32px;
-            font-size: 18px;
-            background-color: #95EC69;
-            color: #000;
-            border: none;
-            border-radius: 12px;
-            cursor: pointer;
-        }
+        body {background-color:#121212;color:#e0e0e0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;margin:0;padding:0;height:100vh;display:flex;flex-direction:column;}
+        #header {height:56px;background:#1e1e1e;display:flex;align-items:center;padding:0 16px;font-size:18px;font-weight:bold;border-bottom:1px solid #333;flex-shrink:0;}
+        .status {text-align:center;padding:6px;font-size:13px;color:#aaa;flex-shrink:0;}
+        #messages {flex:1;overflow-y:auto;padding:15px;display:flex;flex-direction:column;gap:12px;-webkit-overflow-scrolling:touch;scroll-behavior:smooth;}
+        .message {max-width:75%;padding:11px 16px;border-radius:20px;word-wrap:break-word;white-space:pre-wrap;line-height:1.5;font-size:16px;}
+        .sent {align-self:flex-end;background:#95EC69;color:#000;}
+        .received {align-self:flex-start;background:#ffffff;color:#000;}
+        .media-img {max-width:100%;border-radius:12px;margin-top:8px;}
+        .media-video {max-width:100%;border-radius:12px;margin-top:8px;}
+        .file-link {color:#95EC69;text-decoration:underline;margin-top:8px;display:block;}
+        #input-area {flex-shrink:0;display:flex;align-items:center;padding:10px 15px;background:#1e1e1e;padding-bottom:calc(env(safe-area-inset-bottom)+10px);}
+        #message-input {flex:1;height:44px;padding:0 16px;border:none;border-radius:22px;background:#333333;color:#fff;font-size:16px;}
+        #message-input:focus {outline:none;}
+        #attach-button, #send-button {
+            margin-left:10px;width:44px;height:44px;background:#95EC69;color:#000;border:none;border-radius:22px;cursor:pointer;font-size:20px;display:flex;align-items:center;justify-content:center;}
+        #role-selection {flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;background:#1e1e1e;}
+        #role-selection button {margin:15px;padding:14px 32px;font-size:18px;background:#95EC69;color:#000;border:none;border-radius:12px;cursor:pointer;}
+        #file-input {display:none;}
     </style>
 </head>
 <body>
 
-    <!-- 选择身份页面 -->
     <div id="role-selection">
-        <h1>Chat</h1></h1>
+        <h1>Chat</h1>
         <p>选择你的身份</p>
         <button onclick="selectRole('弟弟')">弟弟</button>
         <button onclick="selectRole('哥哥')">哥哥</button>
     </div>
 
-    <!-- 聊天主界面 -->
-    <div id="chat-container" style="display:none; flex-direction:column; height:100vh;">
-        <div id="header">
-            Chat
-        </div>
+    <div id="chat-container" style="display:none;flex-direction:column;height:100vh;">
+        <div id="header">Chat</div>
         <div class="status" id="status">正在加载...</div>
         <div id="messages"></div>
         <div id="input-area">
-            <input type="text" id="message-input" placeholder="输入消息..." autocomplete="off">
+            <button id="attach-button" title="添加附件">+</button>
+            <input type="text" id="message-input" placeholder="输入消息...">
             <button id="send-button">发送</button>
+            <input type="file" id="file-input" accept="*/*" multiple>
         </div>
     </div>
 
     <script>
         const REPO = 'nwsanslive/nwsanslive.github.io';
-        const FILE_PATH = 'chat/chat-history.json';
+        const HISTORY_PATH = 'chat/chat-history.json';
+        const FILES_FOLDER = 'chat/files';  // 附件保存目录
         const BRANCH = 'main';
-        const API_URL = `https://api.github.com/repos/${REPO}/contents/${FILE_PATH}`;
 
+        const HISTORY_API = `https://api.github.com/repos/${REPO}/contents/${HISTORY_PATH}`;
         const urlParams = new URLSearchParams(window.location.search);
         const GITHUB_TOKEN = urlParams.get('token');
 
@@ -156,11 +62,13 @@
         const roleSelection = document.getElementById('role-selection');
         const messageInput = document.getElementById('message-input');
         const sendButton = document.getElementById('send-button');
+        const attachButton = document.getElementById('attach-button');
+        const fileInput = document.getElementById('file-input');
         const statusDiv = document.getElementById('status');
         const header = document.getElementById('header');
 
         if (!GITHUB_TOKEN || !GITHUB_TOKEN.startsWith('ghp_')) {
-            document.body.innerHTML = `<div style="padding:50px;text-align:center;color:#fff;"><h2>缺少 Token</h2><p>请使用带 ?token= 的链接访问</p></div>`;
+            document.body.innerHTML = `<div style="padding:50px;text-align:center;color:#fff;"><h2>缺少 Token</h2><p>请使用带 ?token= 的链接</p></div>`;
             throw new Error("No token");
         }
 
@@ -170,21 +78,16 @@
 
         async function loadMessages() {
             try {
-                const response = await fetch(API_URL, {
-                    headers: { 'Authorization': `token ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github.v3+json' }
-                });
-
-                if (response.status === 404) {
-                    await createEmptyFile();
+                const res = await fetch(HISTORY_API, {headers: {'Authorization': `token ${GITHUB_TOKEN}`}});
+                if (res.status === 404) {
+                    await createEmptyHistory();
                     renderMessages([]);
                     statusDiv.textContent = '新聊天已开始';
                     return;
                 }
-                if (!response.ok) throw new Error('加载失败');
-
-                const data = await response.json();
-                const content = JSON.parse(decodeURIComponent(escape(atob(data.content))));
-                renderMessages(content);
+                const data = await res.json();
+                const history = JSON.parse(decodeURIComponent(escape(atob(data.content))));
+                renderMessages(history);
                 statusDiv.textContent = '记录已同步';
                 scrollToBottom();
             } catch (e) {
@@ -192,87 +95,185 @@
             }
         }
 
-        async function createEmptyFile() {
-            await fetch(API_URL, {
+        async function createEmptyHistory() {
+            await fetch(HISTORY_API, {
                 method: 'PUT',
-                headers: { 'Authorization': `token ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github.v3+json' },
-                body: JSON.stringify({
-                    message: 'init',
-                    content: btoa(unescape(encodeURIComponent('[]'))),
-                    branch: BRANCH
-                })
+                headers: {'Authorization': `token ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github.v3+json'},
+                body: JSON.stringify({message: 'init', content: btoa('[]'), branch: BRANCH})
             });
         }
 
         function renderMessages(history) {
             messagesDiv.innerHTML = '';
-            history.forEach(msg => {
+            history.forEach(item => {
                 const div = document.createElement('div');
-                div.classList.add('message', msg.role === currentRole ? 'sent' : 'received');
-                div.textContent = msg.text;
+                div.classList.add('message', item.role === currentRole ? 'sent' : 'received');
+                
+                if (item.type === 'text') {
+                    div.textContent = item.content;
+                } else if (item.type === 'image' || item.type === 'video') {
+                    div.textContent = item.filename;
+                    const media = document.createElement(item.type === 'image' ? 'img' : 'video');
+                    media.src = item.url;
+                    media.className = item.type === 'image' ? 'media-img' : 'media-video';
+                    if (item.type === 'video') media.controls = true;
+                    div.appendChild(media);
+                } else { // file
+                    div.textContent = item.filename;
+                    const a = document.createElement('a');
+                    a.href = item.url;
+                    a.textContent = '点击下载';
+                    a.className = 'file-link';
+                    a.target = '_blank';
+                    div.appendChild(a);
+                }
                 messagesDiv.appendChild(div);
             });
             scrollToBottom();
         }
 
+        async function uploadFile(file) {
+            const ext = file.name.split('.').pop();
+            const filename = Date.now() + '_' + Math.random().toString(36).substr(2, 9) + '.' + ext;
+            const path = `${FILES_FOLDER}/${filename}`;
+            const url = `https://api.github.com/repos/${REPO}/contents/${path}`;
+
+            const reader = new FileReader();
+            const base64 = await new Promise(resolve => {
+                reader.onload = () => resolve(reader.result.split(',')[1]);
+                reader.readAsDataURL(file);
+            });
+
+            const res = await fetch(url, {
+                method: 'PUT',
+                headers: {'Authorization': `token ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github.v3+json'},
+                body: JSON.stringify({
+                    message: `upload ${filename}`,
+                    content: base64,
+                    branch: BRANCH
+                })
+            });
+
+            if (!res.ok) throw new Error('上传失败');
+            return {
+                filename: file.name,
+                url: `https://raw.githubusercontent.com/${REPO}/${BRANCH}/${path}`,
+                rawPath: path
+            };
+        }
+
+        async function addToHistory(entry) {
+            const getRes = await fetch(HISTORY_API, {headers: {'Authorization': `token ${GITHUB_TOKEN}`}});
+            let history = [], sha = null;
+            if (getRes.ok) {
+                const data = await getRes.json();
+                history = JSON.parse(decodeURIComponent(escape(atob(data.content))));
+                sha = data.sha;
+            }
+
+            history.push({
+                role: currentRole,
+                time: new Date().toISOString(),
+                ...entry
+            });
+
+            await fetch(HISTORY_API, {
+                method: 'PUT',
+                headers: {'Authorization': `token ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github.v3+json'},
+                body: JSON.stringify({
+                    message: 'new message',
+                    content: btoa(unescape(encodeURIComponent(JSON.stringify(history)))),
+                    sha: sha,
+                    branch: BRANCH
+                })
+            });
+        }
+
         async function sendMessage() {
             const text = messageInput.value.trim();
-            if (!text) return;
-
-            const div = document.createElement('div');
-            div.classList.add('message', 'sent');
-            div.textContent = text;
-            messagesDiv.appendChild(div);
-            scrollToBottom();
-
-            messageInput.value = '';
-            statusDiv.textContent = '正在同步...';
-
-            try {
-                const getResp = await fetch(API_URL, { headers: { 'Authorization': `token ${GITHUB_TOKEN}` } });
-                let history = [];
-                let sha = null;
-                if (getResp.ok) {
-                    const data = await getResp.json();
-                    history = JSON.parse(decodeURIComponent(escape(atob(data.content))));
-                    sha = data.sha;
-                }
-
-                history.push({ role: currentRole, text: text, time: new Date().toISOString() });
-
-                const putResp = await fetch(API_URL, {
-                    method: 'PUT',
-                    headers: { 'Authorization': `token ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github.v3+json' },
-                    body: JSON.stringify({
-                        message: 'new msg',
-                        content: btoa(unescape(encodeURIComponent(JSON.stringify(history)))),
-                        sha: sha,
-                        branch: BRANCH
-                    })
-                });
-
-                if (putResp.ok) statusDiv.textContent = '已同步';
-            } catch (e) {
-                statusDiv.textContent = '同步失败';
+            if (text) {
+                const div = document.createElement('div');
+                div.classList.add('message', 'sent');
+                div.textContent = text;
+                messagesDiv.appendChild(div);
+                scrollToBottom();
+                await addToHistory({type: 'text', content: text});
+                messageInput.value = '';
+                statusDiv.textContent = '已同步';
             }
+        }
+
+        async function sendFiles() {
+            const files = fileInput.files;
+            if (files.length === 0) return;
+
+            statusDiv.textContent = '正在上传附件...';
+            for (let file of files) {
+                try {
+                    const uploaded = await uploadFile(file);
+                    const type = file.type.startsWith('image/') ? 'image' : 
+                                 file.type.startsWith('video/') ? 'video' : 'file';
+
+                    await addToHistory({
+                        type: type,
+                        content: uploaded.url,
+                        filename: uploaded.filename,
+                        url: uploaded.url
+                    });
+
+                    // 本地预览
+                    const div = document.createElement('div');
+                    div.classList.add('message', 'sent');
+                    div.textContent = uploaded.filename;
+
+                    if (type === 'image') {
+                        const img = document.createElement('img');
+                        img.src = uploaded.url;
+                        img.className = 'media-img';
+                        div.appendChild(img);
+                    } else if (type === 'video') {
+                        const video = document.createElement('video');
+                        video.src = uploaded.url;
+                        video.controls = true;
+                        video.className = 'media-video';
+                        div.appendChild(video);
+                    } else {
+                        const a = document.createElement('a');
+                        a.href = uploaded.url;
+                        a.textContent = '点击下载';
+                        a.className = 'file-link';
+                        a.target = '_blank';
+                        div.appendChild(a);
+                    }
+                    messagesDiv.appendChild(div);
+                    scrollToBottom();
+                } catch (e) {
+                    statusDiv.textContent = '附件上传失败';
+                }
+            }
+            statusDiv.textContent = '已同步';
+            fileInput.value = '';
         }
 
         function selectRole(role) {
             currentRole = role;
-            header.textContent = role === '弟弟' ? '哥哥' : '弟弟'; // 顶部显示对方身份
+            header.textContent = role === '弟弟' ? '哥哥' : '弟弟';
             roleSelection.style.display = 'none';
             chatContainer.style.display = 'flex';
             loadMessages();
         }
 
-        messageInput.addEventListener('focus', () => setTimeout(scrollToBottom, 300));
-        messageInput.addEventListener('keydown', e => {
+        // 事件绑定
+        attachButton.onclick = () => fileInput.click();
+        fileInput.onchange = sendFiles;
+        sendButton.onclick = sendMessage;
+        messageInput.onkeydown = e => {
             if (e.key === 'Enter') {
                 e.preventDefault();
                 sendMessage();
             }
-        });
-        sendButton.onclick = sendMessage;
+        };
+        messageInput.onfocus = () => setTimeout(scrollToBottom, 300);
 
         setInterval(() => { if (currentRole) loadMessages(); }, 30000);
     </script>
