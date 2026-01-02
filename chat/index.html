@@ -9,12 +9,12 @@
         #header {height:56px;background:#1e1e1e;display:flex;align-items:center;padding:0 16px;font-size:18px;font-weight:bold;border-bottom:1px solid #333;flex-shrink:0;}
         .status {text-align:center;padding:6px;font-size:13px;color:#aaa;flex-shrink:0;}
         #messages {flex:1;overflow-y:auto;padding:15px;display:flex;flex-direction:column;gap:12px;-webkit-overflow-scrolling:touch;scroll-behavior:smooth;}
-        .message {max-width:75%;padding:11px 16px;border-radius:20px;word-wrap:break-word;white-space:pre-wrap;line-height:1.5;font-size:16px;}
+        .message {max-width:75%;padding:11px 16px;border-radius:20px;word-wrap:break-word;white-space:pre-wrap;line-height:1.5;font-size:16px;position:relative;}
         .sent {align-self:flex-end;background:#95EC69;color:#000;}
         .received {align-self:flex-start;background:#ffffff;color:#000;}
-        .media-img {max-width:100%;border-radius:12px;margin-top:8px;}
+        .media-img {max-width:100%;border-radius:12px;margin-top:8px;cursor:pointer;}
         .media-video {max-width:100%;border-radius:12px;margin-top:8px;}
-        .file-link {color:#95EC69;text-decoration:underline;margin-top:8px;display:block;}
+        .file-link {color:#5ebff9;text-decoration:underline;margin-top:8px;display:block;font-size:15px;}
         #input-area {flex-shrink:0;display:flex;align-items:center;padding:10px 15px;background:#1e1e1e;padding-bottom:calc(env(safe-area-inset-bottom)+10px);}
         #message-input {flex:1;height:44px;padding:0 16px;border:none;border-radius:22px;background:#333333;color:#fff;font-size:16px;}
         #message-input:focus {outline:none;}
@@ -23,6 +23,22 @@
         #role-selection {flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;background:#1e1e1e;}
         #role-selection button {margin:15px;padding:14px 32px;font-size:18px;background:#95EC69;color:#000;border:none;border-radius:12px;cursor:pointer;}
         #file-input {display:none;}
+
+        /* 全屏图片查看器 */
+        #fullscreen-overlay {
+            display:none;
+            position:fixed;
+            top:0;left:0;right:0;bottom:0;
+            background:rgba(0,0,0,0.9);
+            align-items:center;
+            justify-content:center;
+            z-index:9999;
+        }
+        #fullscreen-img {
+            max-width:95%;
+            max-height:95%;
+            border-radius:8px;
+        }
     </style>
 </head>
 <body>
@@ -46,10 +62,15 @@
         </div>
     </div>
 
+    <!-- 全屏图片查看器 -->
+    <div id="fullscreen-overlay">
+        <img id="fullscreen-img" src="" alt="全屏图片">
+    </div>
+
     <script>
         const REPO = 'nwsanslive/nwsanslive.github.io';
         const HISTORY_PATH = 'chat/chat-history.json';
-        const FILES_FOLDER = 'chat/files';  // 附件保存目录
+        const FILES_FOLDER = 'chat/files';
         const BRANCH = 'main';
 
         const HISTORY_API = `https://api.github.com/repos/${REPO}/contents/${HISTORY_PATH}`;
@@ -67,6 +88,10 @@
         const statusDiv = document.getElementById('status');
         const header = document.getElementById('header');
 
+        // 全屏图片相关
+        const fullscreenOverlay = document.getElementById('fullscreen-overlay');
+        const fullscreenImg = document.getElementById('fullscreen-img');
+
         if (!GITHUB_TOKEN || !GITHUB_TOKEN.startsWith('ghp_')) {
             document.body.innerHTML = `<div style="padding:50px;text-align:center;color:#fff;"><h2>缺少 Token</h2><p>请使用带 ?token= 的链接</p></div>`;
             throw new Error("No token");
@@ -75,6 +100,19 @@
         function scrollToBottom() {
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
+
+        // 点击图片放大
+        function addImageClickListener(img) {
+            img.onclick = () => {
+                fullscreenImg.src = img.src;
+                fullscreenOverlay.style.display = 'flex';
+            };
+        }
+
+        // 关闭全屏图片
+        fullscreenOverlay.onclick = () => {
+            fullscreenOverlay.style.display = 'none';
+        };
 
         async function loadMessages() {
             try {
@@ -108,18 +146,23 @@
             history.forEach(item => {
                 const div = document.createElement('div');
                 div.classList.add('message', item.role === currentRole ? 'sent' : 'received');
-                
+
                 if (item.type === 'text') {
                     div.textContent = item.content;
-                } else if (item.type === 'image' || item.type === 'video') {
-                    div.textContent = item.filename;
-                    const media = document.createElement(item.type === 'image' ? 'img' : 'video');
-                    media.src = item.url;
-                    media.className = item.type === 'image' ? 'media-img' : 'media-video';
-                    if (item.type === 'video') media.controls = true;
-                    div.appendChild(media);
+                } else if (item.type === 'image') {
+                    const img = document.createElement('img');
+                    img.src = item.url;
+                    img.className = 'media-img';
+                    addImageClickListener(img);  // 添加点击放大
+                    div.appendChild(img);
+                } else if (item.type === 'video') {
+                    const video = document.createElement('video');
+                    video.src = item.url;
+                    video.controls = true;
+                    video.className = 'media-video';
+                    div.appendChild(video);
                 } else { // file
-                    div.textContent = item.filename;
+                    // 只显示下载链接，不显示文件名
                     const a = document.createElement('a');
                     a.href = item.url;
                     a.textContent = '点击下载';
@@ -142,6 +185,7 @@
             const base64 = await new Promise(resolve => {
                 reader.onload = () => resolve(reader.result.split(',')[1]);
                 reader.readAsDataURL(file);
+                reader.onerror = () => reject(reader.error);
             });
 
             const res = await fetch(url, {
@@ -224,12 +268,12 @@
                     // 本地预览
                     const div = document.createElement('div');
                     div.classList.add('message', 'sent');
-                    div.textContent = uploaded.filename;
 
                     if (type === 'image') {
                         const img = document.createElement('img');
                         img.src = uploaded.url;
                         img.className = 'media-img';
+                        addImageClickListener(img);
                         div.appendChild(img);
                     } else if (type === 'video') {
                         const video = document.createElement('video');
@@ -238,6 +282,7 @@
                         video.className = 'media-video';
                         div.appendChild(video);
                     } else {
+                        // 文件只显示下载链接
                         const a = document.createElement('a');
                         a.href = uploaded.url;
                         a.textContent = '点击下载';
@@ -249,6 +294,7 @@
                     scrollToBottom();
                 } catch (e) {
                     statusDiv.textContent = '附件上传失败';
+                    console.error(e);
                 }
             }
             statusDiv.textContent = '已同步';
