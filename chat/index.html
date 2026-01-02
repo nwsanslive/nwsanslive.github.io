@@ -11,12 +11,15 @@
         #messages {flex:1;overflow-y:auto;padding:15px 15px 10px;display:flex;flex-direction:column;gap:20px;-webkit-overflow-scrolling:touch;scroll-behavior:smooth;}
         .message-wrapper {display:flex;flex-direction:column;align-items:center;width:100%;}
         .timestamp {font-size:12px;color:#888;margin-bottom:8px;}
-        .message {max-width:75%;padding:11px 16px;border-radius:20px;word-wrap:break-word;white-space:pre-wrap;line-height:1.5;font-size:16px;position:relative;}
-        .sent {align-self:flex-end;background:#95EC69;color:#000;}
-        .received {align-self:flex-start;background:#ffffff;color:#000;}
+        .message {max-width:75%;word-wrap:break-word;white-space:pre-wrap;line-height:1.5;font-size:16px;}
+        .sent {align-self:flex-end;}
+        .received {align-self:flex-start;}
+        /* 文字消息气泡 */
+        .text-bubble {padding:11px 16px;border-radius:20px;background:#95EC69;color:#000;}
+        .received .text-bubble {background:#ffffff;color:#000;}
+        /* 图片视频：完全无气泡包裹，直接占满 */
         .media-img, .media-video {
-            width:100%;max-width:100%;border-radius:12px;margin:0;cursor:pointer;display:block;
-        }
+            max-width:100%;width:auto;border-radius:12px;display:block;cursor:pointer;}
         .media-video {background:#000;}
         .file-info {margin-top:8px;font-size:14px;opacity:0.9;}
         .file-link {color:#5ebff9;text-decoration:underline;display:block;margin-top:4px;}
@@ -40,7 +43,7 @@
 
     <div id="role-selection">
         <h1>Chat</h1>
-        <p>选择你的身份(记录全设备同步)</p>
+        <p>选择你的身份</p>
         <button onclick="selectRole('弟弟')">弟弟</button>
         <button onclick="selectRole('哥哥')">哥哥</button>
     </div>
@@ -72,7 +75,7 @@
         const GITHUB_TOKEN = urlParams.get('token');
 
         let currentRole = null;
-        let lastTime = null; // 用于判断是否显示时间戳
+        let lastTime = null;
 
         const messagesDiv = document.getElementById('messages');
         const chatContainer = document.getElementById('chat-container');
@@ -90,7 +93,6 @@
             throw new Error("No token");
         }
 
-        // 时间格式：X月Xd日 XX:XX
         function formatTime(dateStr) {
             const d = new Date(dateStr);
             const month = d.getMonth() + 1;
@@ -100,7 +102,6 @@
             return `${month}月${date}日 ${hour}:${minute}`;
         }
 
-        // 超过5分钟才显示时间戳
         function shouldShowTimestamp(currentTime) {
             if (!lastTime) return true;
             const diff = (new Date(currentTime) - new Date(lastTime)) / 1000 / 60;
@@ -119,11 +120,14 @@
                 lastTime = item.time;
             }
 
-            const div = document.createElement('div');
-            div.classList.add('message', item.role === currentRole ? 'sent' : 'received');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${item.role === currentRole ? 'sent' : 'received'}`;
 
             if (item.type === 'text') {
-                div.textContent = item.content;
+                const bubble = document.createElement('div');
+                bubble.className = 'text-bubble';
+                bubble.textContent = item.content;
+                messageDiv.appendChild(bubble);
             } else if (item.type === 'image') {
                 const img = document.createElement('img');
                 img.src = item.url;
@@ -132,27 +136,30 @@
                     fullscreenImg.src = item.url;
                     fullscreenOverlay.style.display = 'flex';
                 };
-                div.appendChild(img);
+                messageDiv.appendChild(img);
             } else if (item.type === 'video') {
                 const video = document.createElement('video');
                 video.src = item.url;
                 video.controls = true;
                 video.className = 'media-video';
-                div.appendChild(video);
+                messageDiv.appendChild(video);
             } else { // file
+                const bubble = document.createElement('div');
+                bubble.className = 'text-bubble';
                 const nameDiv = document.createElement('div');
                 nameDiv.textContent = item.filename;
                 nameDiv.className = 'file-info';
-                div.appendChild(nameDiv);
-
+                bubble.appendChild(nameDiv);
                 const a = document.createElement('a');
                 a.href = item.url;
                 a.textContent = '点击下载';
                 a.className = 'file-link';
                 a.target = '_blank';
-                div.appendChild(a);
+                bubble.appendChild(a);
+                messageDiv.appendChild(bubble);
             }
-            wrapper.appendChild(div);
+
+            wrapper.appendChild(messageDiv);
             return wrapper;
         }
 
@@ -255,7 +262,7 @@
             if (!text) return;
 
             const entry = {type: 'text', content: text};
-            const wrapper = createMessageWrapper({...entry, time: new Date().toISOString()});
+            const wrapper = createMessageWrapper({...entry, time: new Date().toISOString(), role: currentRole});  // 强制己方
             messagesDiv.appendChild(wrapper);
             scrollToBottom();
 
@@ -280,7 +287,7 @@
                         url: uploaded.url
                     };
 
-                    const wrapper = createMessageWrapper({...entry, time: new Date().toISOString()});
+                    const wrapper = createMessageWrapper({...entry, time: new Date().toISOString(), role: currentRole});  // 强制己方
                     messagesDiv.appendChild(wrapper);
                     scrollToBottom();
 
@@ -298,6 +305,8 @@
             roleSelection.style.display = 'none';
             chatContainer.style.display = 'flex';
             loadMessages();
+            // 选择身份后立即滚到底部
+            setTimeout(scrollToBottom, 500);
         }
 
         fullscreenOverlay.onclick = () => fullscreenOverlay.style.display = 'none';
