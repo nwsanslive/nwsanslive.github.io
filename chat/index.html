@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>兄弟聊天工具（记录储存在GitHub）</title>
+    <style>
+        body {
+            background-color: #121212;
+            color: #e0e0e0;
+            font-family: Arial, Helvetica, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+        #role-selection {
+            padding: 20px;
+            text-align: center;
+            background-color: #1e1e1e;
+        }
+        #role-selection button {
+            margin: 10px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #95EC69;
+            color: #000;
+            border: none;
+            border-radius: 10px;
+        }
+        #chat-container {
+            flex: 1;
+            display: none;
+            flex-direction: column;
+        }
+        #messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        .message {
+            max-width: 70%;
+            margin: 8px 0;
+            padding: 12px 16px;
+            border-radius: 20px;
+            word-wrap: break-word;
+            align-self: flex-start;
+        }
+        .sent {
+            align-self: flex-end;
+            background-color: #95EC69;
+            color: #000;
+        }
+        .received {
+            background-color: #ffffff;
+            color: #000;
+        }
+        #input-area {
+            display: flex;
+            padding: 10px;
+            background-color: #1e1e1e;
+        }
+        #message-input {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 20px;
+            background-color: #333333;
+            color: #ffffff;
+            font-size: 16px;
+        }
+        #send-button {
+            margin-left: 10px;
+            padding: 0 20px;
+            background-color: #95EC69;
+            color: #000;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .status {
+            text-align: center;
+            padding: 5px;
+            font-size: 14px;
+            color: #aaa;
+        }
+    </style>
+</head>
+<body>
+    <div id="role-selection">
+        <h1>兄弟聊天工具</h1>
+        <p>聊天记录将储存在 GitHub 仓库的一个文件中，全设备同步</p>
+        <button onclick="selectRole('弟弟')">我是弟弟</button>
+        <button onclick="selectRole('哥哥')">我是哥哥</button>
+    </div>
+
+    <div id="chat-container">
+        <div class="status" id="status">正在加载聊天记录...</div>
+        <div id="messages"></div>
+        <div id="input-area">
+            <input type="text" id="message-input" placeholder="输入消息..." autocomplete="off">
+            <button id="send-button">发送</button>
+        </div>
+    </div>
+
+    <script>
+        // ==================== 请在这里修改你的配置 ====================
+        const GITHUB_TOKEN = 'ghp_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'; // 你的 Personal Access Token（必须）
+        const REPO = 'yourusername/your-repo'; // 格式：用户名/仓库名，例如 xiaoming/brother-chat
+        const FILE_PATH = 'chat-history.json'; // 储存在仓库里的文件名
+        const BRANCH = 'main'; // 通常是 main 或 master
+        // ===========================================================
+
+        const API_URL = `https://api.github.com/repos/${REPO}/contents/${FILE_PATH}`;
+        
+        let currentRole = null;
+        let currentSha = null; // 文件的 sha，用于更新
+        const messagesDiv = document.getElementById('messages');
+        const chatContainer = document.getElementById('chat-container');
+        const roleSelection = document.getElementById('role-selection');
+        const messageInput = document.getElementById('message-input');
+        const sendButton = document.getElementById('send-button');
+        const statusDiv = document.getElementById('status');
+
+        // 从 GitHub 加载聊天记录
+        async function loadMessages() {
+            try {
+                const response = await fetch(API_URL, {
+                    headers: {
+                        'Authorization': `token ${GITHUB_TOKEN}`,
+                        'Accept': 'application/vnd.github.v3+json'
+                    }
+                });
+
+                if (response.status === 404) {
+                    // 文件不存在，创建空记录
+                    await createEmptyFile();
+                    renderMessages([]);
+                    statusDiv.textContent = '新聊天已开始';
+                    return;
+                }
+
+                if (!response.ok) throw new Error('加载失败');
+
+                const data = await response.json();
+                currentSha = data.sha;
+                const content = JSON.parse(atob(data.content));
+                renderMessages(content);
+                statusDiv.textContent = '记录已同步';
+            } catch (e) {
+                statusDiv.textContent = '加载失败：' + e.message;
+                renderMessages([]);
+            }
+        }
+
+        // 创建空文件
+        async function createEmptyFile() {
+            const response = await fetch(API_URL, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `token ${GITHUB_TOKEN}`,
+                    'Accept': 'application/vnd.github.v3+json'
+                },
+                body: JSON.stringify({
+                    message: 'init chat history',
+                    content: btoa(JSON.stringify([])),
+                    branch: BRANCH
+                })
+            });
+            if (response.ok) {
+                const data = await response.json();
+                currentSha = data.content.sha;
+            }
+        }
+
+        // 渲染消息
+        function renderMessages(history) {
+            messagesDiv.innerHTML = '';
+            history.forEach(msg => {
+                const div = document.createElement('div');
+                div.classList.add('message');
+                div.textContent = msg.text;
+                if (msg.role === currentRole) {
+                    div.classList.add('sent');
+                } else {
+                    div.classList.add('received');
+                }
+                messagesDiv.appendChild(div);
+            });
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        // 发送消息并上传到 GitHub
+        async function sendMessage() {
+            const text = messageInput.value.trim();
+            if (!text || !currentRole) return;
+
+            // 先本地显示（乐观更新）
+            const div = document.createElement('div');
+            div.classList.add('message', 'sent');
+            div.textContent = text;
+            messagesDiv.appendChild(div);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            messageInput.value = '';
+
+            statusDiv.textContent = '正在同步到 GitHub...';
+
+            try {
+                // 获取最新内容（防止冲突）
+                const getResp = await fetch(API_URL, {
+                    headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
+                });
+                let history = [];
+                let sha = null;
+                if (getResp.ok) {
+                    const data = await getResp.json();
+                    history = JSON.parse(atob(data.content));
+                    sha = data.sha;
+                }
+
+                // 添加新消息
+                history.push({ role: currentRole, text: text, time: new Date().toISOString() });
+
+                // 上传更新
+                const putResp = await fetch(API_URL, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `token ${GITHUB_TOKEN}`,
+                        'Accept': 'application/vnd.github.v3+json'
+                    },
+                    body: JSON.stringify({
+                        message: `new message from ${currentRole}`,
+                        content: btoa(unescape(encodeURIComponent(JSON.stringify(history)))), // 正确处理中文
+                        sha: sha,
+                        branch: BRANCH
+                    })
+                });
+
+                if (putResp.ok) {
+                    statusDiv.textContent = '已同步';
+                } else {
+                    throw new Error('上传失败');
+                }
+            } catch (e) {
+                statusDiv.textContent = '同步失败：' + e.message;
+            }
+        }
+
+        // 选择身份
+        function selectRole(role) {
+            currentRole = role;
+            roleSelection.style.display = 'none';
+            chatContainer.style.display = 'flex';
+            loadMessages();
+        }
+
+        // 事件绑定
+        sendButton.onclick = sendMessage;
+        messageInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // 每30秒自动刷新一次记录（防止另一设备发消息时没看到）
+        setInterval(() => {
+            if (currentRole) loadMessages();
+        }, 30000);
+    </script>
+</body>
+</html>
