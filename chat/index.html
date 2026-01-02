@@ -11,50 +11,41 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
             margin: 0;
             padding: 0;
+            height: 100vh;
             display: flex;
             flex-direction: column;
-            height: 100vh;
-            overflow: hidden;
         }
-        #role-selection {
-            padding: 20px;
-            text-align: center;
+        /* 顶部栏：固定 */
+        #header {
+            height: 56px;
             background-color: #1e1e1e;
-        }
-        #role-selection h1 { margin-bottom: 30px; }
-        #role-selection button {
-            margin: 10px;
-            padding: 12px 28px;
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
             font-size: 18px;
-            background-color: #95EC69;
-            color: #000;
-            border: none;
-            border-radius: 12px;
-            cursor: pointer;
+            font-weight: bold;
+            border-bottom: 1px solid #333;
+            flex-shrink: 0;
         }
-        #chat-container {
-            flex: 1;
-            display: none;
-            flex-direction: column;
-        }
+        /* 中间消息区：可滚动 */
         #messages {
             flex: 1;
-            padding: 15px;
             overflow-y: auto;
+            padding: 15px;
             display: flex;
             flex-direction: column;
-            gap: 8px; /* 消息间距更均匀 */
-            -webkit-overflow-scrolling: touch; /* iOS 滚动更流畅 */
+            gap: 12px;
+            -webkit-overflow-scrolling: touch;
+            scroll-behavior: smooth;
         }
         .message {
             max-width: 75%;
             padding: 11px 16px;
             border-radius: 20px;
             word-wrap: break-word;
-            white-space: pre-wrap; /* 关键：支持换行和多行显示 */
+            white-space: pre-wrap;
             line-height: 1.5;
             font-size: 16px;
-            align-self: flex-start;
         }
         .sent {
             align-self: flex-end;
@@ -62,69 +53,90 @@
             color: #000;
         }
         .received {
+            align-self: flex-start;
             background-color: #ffffff;
             color: #000;
         }
+        /* 底部输入区：固定 */
         #input-area {
+            flex-shrink: 0;
             display: flex;
             align-items: center;
             padding: 10px 15px;
             background-color: #1e1e1e;
-            padding-bottom: calc(env(safe-area-inset-bottom) + 20px);
-            margin-bottom: env(safe-area-inset-bottom);
+            padding-bottom: calc(env(safe-area-inset-bottom) + 10px); /* 防底部导航栏遮挡 */
         }
         #message-input {
             flex: 1;
-            min-height: 48px; /* 最小高度 */
-            max-height: 120px; /* 最多支持约5行 */
-            padding: 14px 16px;
+            height: 44px;
+            padding: 0 16px;
             border: none;
-            border-radius: 24px;
+            border-radius: 22px;
             background-color: #333333;
             color: #ffffff;
             font-size: 16px;
-            resize: none; /* 禁止手动拉伸 */
-            overflow-y: auto; /* 内容多时出现滚动条 */
-            line-height: 1.4;
         }
         #message-input:focus {
             outline: none;
         }
         #send-button {
-            margin-left: 10px;
-            width: 72px;
-            height: 48px;
+            margin-left: 12px;
+            width: 68px;
+            height: 44px;
             background-color: #95EC69;
             color: #000;
             border: none;
-            border-radius: 24px;
+            border-radius: 22px;
             cursor: pointer;
             font-size: 16px;
             font-weight: bold;
-            flex-shrink: 0;
         }
         .status {
             text-align: center;
-            padding: 8px;
-            font-size: 14px;
+            padding: 6px;
+            font-size: 13px;
             color: #aaa;
+            flex-shrink: 0;
+        }
+        #role-selection {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: #1e1e1e;
+        }
+        #role-selection button {
+            margin: 15px;
+            padding: 14px 32px;
+            font-size: 18px;
+            background-color: #95EC69;
+            color: #000;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
         }
     </style>
 </head>
 <body>
 
+    <!-- 选择身份页面 -->
     <div id="role-selection">
-        <h1>Chat</h1>
-        <p>选择身份（聊天记录全设备同步）</p>
+        <h1>Chat</h1></h1>
+        <p>选择你的身份</p>
         <button onclick="selectRole('弟弟')">弟弟</button>
         <button onclick="selectRole('哥哥')">哥哥</button>
     </div>
 
-    <div id="chat-container">
-        <div class="status" id="status">正在加载聊天记录...</div>
+    <!-- 聊天主界面 -->
+    <div id="chat-container" style="display:none; flex-direction:column; height:100vh;">
+        <div id="header">
+            Chat
+        </div>
+        <div class="status" id="status">正在加载...</div>
         <div id="messages"></div>
         <div id="input-area">
-            <textarea id="message-input" placeholder="输入消息" autocomplete="off"></textarea>
+            <input type="text" id="message-input" placeholder="输入消息..." autocomplete="off">
             <button id="send-button">发送</button>
         </div>
     </div>
@@ -145,10 +157,15 @@
         const messageInput = document.getElementById('message-input');
         const sendButton = document.getElementById('send-button');
         const statusDiv = document.getElementById('status');
+        const header = document.getElementById('header');
 
         if (!GITHUB_TOKEN || !GITHUB_TOKEN.startsWith('ghp_')) {
-            document.body.innerHTML = `<div style="padding:50px;text-align:center;color:#fff;"><h2>缺少 Token</h2><p>请加 ?token=ghp_... 访问</p></div>`;
+            document.body.innerHTML = `<div style="padding:50px;text-align:center;color:#fff;"><h2>缺少 Token</h2><p>请使用带 ?token= 的链接访问</p></div>`;
             throw new Error("No token");
+        }
+
+        function scrollToBottom() {
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
 
         async function loadMessages() {
@@ -163,8 +180,7 @@
                     statusDiv.textContent = '新聊天已开始';
                     return;
                 }
-
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                if (!response.ok) throw new Error('加载失败');
 
                 const data = await response.json();
                 const content = JSON.parse(decodeURIComponent(escape(atob(data.content))));
@@ -172,7 +188,7 @@
                 statusDiv.textContent = '记录已同步';
                 scrollToBottom();
             } catch (e) {
-                statusDiv.textContent = '加载失败：' + e.message;
+                statusDiv.textContent = '加载失败';
             }
         }
 
@@ -181,7 +197,7 @@
                 method: 'PUT',
                 headers: { 'Authorization': `token ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github.v3+json' },
                 body: JSON.stringify({
-                    message: 'init chat history',
+                    message: 'init',
                     content: btoa(unescape(encodeURIComponent('[]'))),
                     branch: BRANCH
                 })
@@ -199,10 +215,6 @@
             scrollToBottom();
         }
 
-        function scrollToBottom() {
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
-        }
-
         async function sendMessage() {
             const text = messageInput.value.trim();
             if (!text) return;
@@ -214,7 +226,6 @@
             scrollToBottom();
 
             messageInput.value = '';
-            adjustTextareaHeight(); // 重置高度
             statusDiv.textContent = '正在同步...';
 
             try {
@@ -229,24 +240,18 @@
 
                 history.push({ role: currentRole, text: text, time: new Date().toISOString() });
 
-                const encodedContent = btoa(unescape(encodeURIComponent(JSON.stringify(history))));
-
                 const putResp = await fetch(API_URL, {
                     method: 'PUT',
                     headers: { 'Authorization': `token ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github.v3+json' },
                     body: JSON.stringify({
-                        message: `message from ${currentRole}`,
-                        content: encodedContent,
+                        message: 'new msg',
+                        content: btoa(unescape(encodeURIComponent(JSON.stringify(history)))),
                         sha: sha,
                         branch: BRANCH
                     })
                 });
 
-                if (putResp.ok) {
-                    statusDiv.textContent = '已同步';
-                } else {
-                    throw new Error('上传失败');
-                }
+                if (putResp.ok) statusDiv.textContent = '已同步';
             } catch (e) {
                 statusDiv.textContent = '同步失败';
             }
@@ -254,41 +259,22 @@
 
         function selectRole(role) {
             currentRole = role;
+            header.textContent = role === '弟弟' ? '哥哥' : '弟弟'; // 顶部显示对方身份
             roleSelection.style.display = 'none';
             chatContainer.style.display = 'flex';
             loadMessages();
         }
 
-        // 支持多行输入：自动调整 textarea 高度
-        function adjustTextareaHeight() {
-            messageInput.style.height = '48px';
-            messageInput.style.height = Math.min(messageInput.scrollHeight, 120) + 'px';
-        }
-
-        messageInput.addEventListener('input', adjustTextareaHeight);
-
-        // 聚焦时确保可见
-        messageInput.addEventListener('focus', () => {
-            setTimeout(scrollToBottom, 300);
-        });
-
-        // 发送：点击按钮或 Shift+Enter 发送，单纯 Enter 换行
+        messageInput.addEventListener('focus', () => setTimeout(scrollToBottom, 300));
         messageInput.addEventListener('keydown', e => {
-            if (e.key === 'Enter' && !e.shiftKey) {
+            if (e.key === 'Enter') {
                 e.preventDefault();
                 sendMessage();
             }
         });
-
         sendButton.onclick = sendMessage;
 
-        // 每30秒刷新一次
-        setInterval(() => {
-            if (currentRole) loadMessages();
-        }, 30000);
-
-        // 初始化高度
-        adjustTextareaHeight();
+        setInterval(() => { if (currentRole) loadMessages(); }, 30000);
     </script>
 </body>
 </html>
