@@ -114,7 +114,7 @@
         #fullscreen-overlay {display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.95);align-items:center;justify-content:center;z-index:9999;cursor:pointer;}
         #fullscreen-img {max-width:95%;max-height:95%;cursor:pointer;}
         #action-sheet {display:none;position:fixed;bottom:0;left:0;right:0;background:#1e1e1e;border-top-left-radius:16px;border-top-right-radius:16px;padding:20px 0;z-index:10000;flex-direction:column;}
-        #action-sheet button {padding:16px 24px;font-size:17px;background:transparent;color:#e0e0e0;border:none;text-align:left;margin:0 20px;border-bottom:1px solid #333;}
+        #action-sheet button {padding:16px 24px;font-size:17px;background:transparent;color:#e0e0e0;border:none;text-align:left;margin:0 20px;border-bottom:1px solid #333;}
         #action-sheet button:last-child {border-bottom:none;}
         #action-overlay {display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9998;}
     </style>
@@ -178,6 +178,9 @@
         const fullscreenImg = document.getElementById('fullscreen-img');
         const actionOverlay = document.getElementById('action-overlay');
         const actionSheet = document.getElementById('action-sheet');
+        const actionReply = document.getElementById('action-reply');
+        const actionDelete = document.getElementById('action-delete');
+        const actionCopy = document.getElementById('action-copy');
 
         if (!GITHUB_TOKEN || !GITHUB_TOKEN.startsWith('ghp_')) {
             document.body.innerHTML = `<div style="padding:50px;text-align:center;color:#fff;"><h2>缺少 Token</h2><p>请使用带 ?token= 的链接访问</p></div>`;
@@ -487,16 +490,15 @@
             });
 
             actionDelete.addEventListener('click', async () => {
-                if (!selectedMessage) return;
+                if (!selectedMessage || !selectedMessage.item || selectedMessage.item.role !== currentRole) return;
 
-                const {item, element} = selectedMessage;
+                const element = selectedMessage.element;
+                const item = selectedMessage.item;
 
-                if (item.role === currentRole) {
-                    statusDiv.textContent = '正在删除...';
-                    element.remove(); // 立即本地移除
-                    await deleteMessage(item);
-                    await loadMessages(true); // 强制全reload，确保同步
-                }
+                statusDiv.textContent = '正在删除...';
+                element.remove(); // 立即本地移除
+                await deleteMessage(item);
+                await loadMessages(true); // 强制全reload，确保同步成功
                 actionOverlay.click();
             });
         });
