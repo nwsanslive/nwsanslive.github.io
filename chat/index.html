@@ -33,20 +33,21 @@
         }
         .message-container {
             display:flex;
-            flex-direction: row; /* 显式声明，确保布局正确 */
             align-items:flex-end;
             gap:10px;
             max-width:85%;
             width:fit-content;
         }
-        /* 关键修复：无空格的选择器，确保 sent/received 生效 */
+        /* 修复左右对齐，并调整 more-btn 位置以避免右边空块 */
         .message-container.sent {
             margin-left:auto;
             justify-content:flex-end;
+            flex-direction: row-reverse; /* 反转顺序：more-btn 在左，气泡在右 */
         }
         .message-container.received {
             margin-right:auto;
             justify-content:flex-start;
+            flex-direction: row; /* 正常顺序：气泡在左，more-btn 在右 */
         }
         .message {max-width:100%;}
         .text-bubble {padding:11px 16px;border-radius:20px;}
@@ -221,7 +222,6 @@
             const containerClass = item.role === currentRole ? 'message-container sent' : 'message-container received';
             const container = document.createElement('div');
             container.className = containerClass;
-            // 调试：打印类名
             console.log(`消息角色: ${item.role}, 当前角色: ${currentRole}, 类名: ${containerClass}`);
 
             const messageDiv = document.createElement('div');
@@ -273,8 +273,17 @@
                 actionOverlay.style.display = 'block';
             };
 
-            container.appendChild(messageDiv);
-            container.appendChild(moreBtn);
+            // 根据 sent/received 调整顺序
+            if (item.role === currentRole) {
+                // sent: moreBtn 先 (左), messageDiv 后 (右)
+                container.appendChild(moreBtn);
+                container.appendChild(messageDiv);
+            } else {
+                // received: messageDiv 先 (左), moreBtn 后 (右)
+                container.appendChild(messageDiv);
+                container.appendChild(moreBtn);
+            }
+
             wrapper.appendChild(container);
             group.appendChild(wrapper);
             return group;
