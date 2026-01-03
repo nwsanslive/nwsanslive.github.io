@@ -178,9 +178,6 @@
         const fullscreenImg = document.getElementById('fullscreen-img');
         const actionOverlay = document.getElementById('action-overlay');
         const actionSheet = document.getElementById('action-sheet');
-        const actionReply = document.getElementById('action-reply');
-        const actionDelete = document.getElementById('action-delete');
-        const actionCopy = document.getElementById('action-copy');
 
         if (!GITHUB_TOKEN || !GITHUB_TOKEN.startsWith('ghp_')) {
             document.body.innerHTML = `<div style="padding:50px;text-align:center;color:#fff;"><h2>缺少 Token</h2><p>请使用带 ?token= 的链接访问</p></div>`;
@@ -452,7 +449,9 @@
             if (!getRes.ok) return;
             const data = await getRes.json();
             let history = JSON.parse(decodeURIComponent(escape(atob(data.content))));
-            const index = history.findIndex(h => h.time === item.time);
+            const index = history.findIndex(h => h.time === item.time && h.role === item.role && 
+                ((h.type === 'text' && h.content === item.content) || 
+                 (h.type !== 'text' && h.url === item.url)));
             if (index === -1) return;
             history.splice(index, 1);
             await fetch(HISTORY_API, {
@@ -529,9 +528,9 @@
 
                 if (item.role === currentRole) {
                     statusDiv.textContent = '正在删除...';
-                    element.remove(); // 本地立即移除
+                    element.remove(); // 立即本地移除
                     await deleteMessage(item);
-                    await loadMessages(); // 同步
+                    await loadMessages(true); // 全reload确保同步
                 }
                 actionOverlay.click();
             });
