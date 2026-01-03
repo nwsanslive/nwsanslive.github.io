@@ -167,6 +167,7 @@
         let currentRole = null;
         let lastTime = null;
         let selectedMessage = null;
+        let lastHistoryLength = 0; // 新增：跟踪历史长度，用于检测新消息
 
         const messagesDiv = document.getElementById('messages');
         const chatContainer = document.getElementById('chat-container');
@@ -273,11 +274,11 @@
                 actionOverlay.style.display = 'block';
             };
 
-            // 根据 sent/received 调整顺序
+            // 调整顺序，确保 sent 的 moreBtn 在左
             if (item.role === currentRole) {
-                // sent: moreBtn 先 (左), messageDiv 后 (右)
-                container.appendChild(moreBtn);
+                // sent: messageDiv 先 (右), moreBtn 后 (左) - 因为 row-reverse
                 container.appendChild(messageDiv);
+                container.appendChild(moreBtn);
             } else {
                 // received: messageDiv 先 (左), moreBtn 后 (右)
                 container.appendChild(messageDiv);
@@ -293,24 +294,31 @@
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
 
-        async function loadMessages() {
+        async function loadMessages(isInitial = false) {
             try {
                 const res = await fetch(HISTORY_API, {headers: {'Authorization': `token ${GITHUB_TOKEN}`}});
                 messagesDiv.innerHTML = '';
                 lastTime = null;
+                let history = [];
                 if (res.status === 404) {
                     await createEmptyHistory();
                     statusDiv.textContent = '新聊天已开始';
+                    lastHistoryLength = 0;
                     scrollToBottom();
                     return;
                 }
                 const data = await res.json();
-                const history = JSON.parse(decodeURIComponent(escape(atob(data.content))));
+                history = JSON.parse(decodeURIComponent(escape(atob(data.content))));
                 history.forEach((item, index) => {
                     messagesDiv.appendChild(createMessageWrapper(item, index));
                 });
                 statusDiv.textContent = '记录已同步';
-                scrollToBottom();
+
+                // 只在有新消息或初始加载时滚到底部
+                if (isInitial || history.length > lastHistoryLength) {
+                    scrollToBottom();
+                }
+                lastHistoryLength = history.length;
             } catch (e) {
                 statusDiv.textContent = '加载失败';
                 console.error(e);
@@ -396,6 +404,7 @@
             await addToHistory(entry);
             messageInput.value = '';
             statusDiv.textContent = '已同步';
+            lastHistoryLength++; // 更新长度
         }
 
         async function sendFiles() {
@@ -420,6 +429,7 @@
                     scrollToBottom();
 
                     await addToHistory(entry);
+                    lastHistoryLength++;
                 } catch (e) {
                     statusDiv.textContent = '上传失败';
                 }
@@ -447,6 +457,7 @@
             if (item.type !== 'text' && item.role === currentRole && item.path) {
                 await deleteFileFromGitHub(item.path);
             }
+            lastHistoryLength = history.length; // 更新长度
         }
 
         async function deleteFileFromGitHub(path) {
@@ -469,7 +480,7 @@
             currentRole = role;
             roleSelection.style.display = 'none';
             chatContainer.style.display = 'flex';
-            loadMessages();
+            loadMessages(true); // 初始加载，传 true
         }
 
         actionOverlay.onclick = () => {
@@ -520,7 +531,7 @@
         };
         messageInput.onfocus = () => setTimeout(scrollToBottom, 400);
 
-        setInterval(() => { if (currentRole) loadMessages(); }, 2000);
+        setInterval(() => { if (currentRole) loadMessages(); }, 2000); // 非初始，传 false 或无参数
     </script>
 </body>
 </html>
