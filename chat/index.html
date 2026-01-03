@@ -187,7 +187,6 @@
             throw new Error("No token");
         }
 
-        // 全屏图片修复
         function openFullscreen(url) {
             fullscreenImg.src = url;
             fullscreenOverlay.style.display = 'flex';
@@ -488,14 +487,6 @@
             });
         }
 
-        function selectRole(role) {
-            currentRole = role;
-            roleSelection.style.display = 'none';
-            chatContainer.style.display = 'flex';
-            loadMessages(true);
-        }
-
-        // 所有事件绑定用 addEventListener，确保可靠
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('role-didi').addEventListener('click', () => selectRole('弟弟'));
             document.getElementById('role-gege').addEventListener('click', () => selectRole('哥哥'));
@@ -534,16 +525,24 @@
             actionDelete.addEventListener('click', async () => {
                 if (!selectedMessage) return;
 
-                const {item} = selectedMessage;
+                const {item, element} = selectedMessage;
 
                 if (item.role === currentRole) {
                     statusDiv.textContent = '正在删除...';
+                    element.remove(); // 本地立即移除
                     await deleteMessage(item);
-                    await loadMessages(true);
+                    await loadMessages(); // 同步
                 }
                 actionOverlay.click();
             });
         });
+
+        function selectRole(role) {
+            currentRole = role;
+            roleSelection.style.display = 'none';
+            chatContainer.style.display = 'flex';
+            loadMessages(true);
+        }
 
         setInterval(() => { if (currentRole) loadMessages(); }, 2000);
     </script>
