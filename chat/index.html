@@ -276,7 +276,6 @@
                 actionOverlay.style.display = 'block';
             });
 
-            // 统一追加顺序，结合 flex-direction: row-reverse 实现“更多按钮始终靠近气泡”
             container.appendChild(messageDiv);
             container.appendChild(moreBtn);
 
@@ -473,7 +472,6 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-            // 添加缺失的 DOM 元素引用（这是原代码的主要错误）
             const actionReply = document.getElementById('action-reply');
             const actionDelete = document.getElementById('action-delete');
             const actionCopy = document.getElementById('action-copy');
@@ -512,19 +510,31 @@
                 actionOverlay.click();
             });
 
+            // 已改为悲观删除：先彻底删除 GitHub 数据，再刷新页面
             actionDelete.addEventListener('click', async () => {
                 if (!selectedMessage) return;
 
-                const {item, element} = selectedMessage;
+                const {item} = selectedMessage;
 
-                if (item.role === currentRole) {
-                    statusDiv.textContent = '正在删除...';
-                    element.remove(); // 立即本地移除
-                    await deleteMessage(item);
-                    await loadMessages(true); // 强制重新加载，确保同步
-                    statusDiv.textContent = '已删除';
+                if (item.role !== currentRole) {
+                    actionOverlay.click();
+                    return;
                 }
+
+                statusDiv.textContent = '正在删除...';
+
+                try {
+                    await deleteMessage(item);  // 先删除 GitHub（历史 + 文件）
+                    await loadMessages(true);   // 刷新整个列表，消息会消失
+                    statusDiv.textContent = '已删除';
+                } catch (e) {
+                    console.error('删除失败', e);
+                    await loadMessages(true);   // 失败也刷新，恢复原状
+                    statusDiv.textContent = '删除失败，请重试';
+                }
+
                 actionOverlay.click();
+                selectedMessage = null;
             });
         });
 
