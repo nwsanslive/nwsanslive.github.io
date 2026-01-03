@@ -164,7 +164,6 @@
         let currentRole = null;
         let lastTime = null;
         let selectedMessage = null;
-        let lastHistoryLength = 0;
 
         const messagesDiv = document.getElementById('messages');
         const chatContainer = document.getElementById('chat-container');
@@ -178,6 +177,9 @@
         const fullscreenImg = document.getElementById('fullscreen-img');
         const actionOverlay = document.getElementById('action-overlay');
         const actionSheet = document.getElementById('action-sheet');
+        const actionReply = document.getElementById('action-reply');
+        const actionDelete = document.getElementById('action-delete');
+        const actionCopy = document.getElementById('action-copy');
 
         if (!GITHUB_TOKEN || !GITHUB_TOKEN.startsWith('ghp_')) {
             document.body.innerHTML = `<div style="padding:50px;text-align:center;color:#fff;"><h2>缺少 Token</h2><p>请使用带 ?token= 的链接访问</p></div>`;
@@ -293,38 +295,24 @@
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
 
-        async function loadMessages(isInitial = false) {
+        async function loadMessages() {
             try {
                 const res = await fetch(HISTORY_API, {headers: {'Authorization': `token ${GITHUB_TOKEN}`}});
-                let history = [];
+                messagesDiv.innerHTML = '';
+                lastTime = null;
                 if (res.status === 404) {
                     await createEmptyHistory();
                     statusDiv.textContent = '新聊天已开始';
-                    lastHistoryLength = 0;
-                    messagesDiv.innerHTML = '';
-                    if (isInitial) scrollToBottom();
+                    scrollToBottom();
                     return;
                 }
                 const data = await res.json();
-                history = JSON.parse(decodeURIComponent(escape(atob(data.content))));
-
-                if (history.length > lastHistoryLength) {
-                    const newMessages = history.slice(lastHistoryLength);
-                    newMessages.forEach((item) => {
-                        messagesDiv.appendChild(createMessageWrapper(item));
-                    });
-                    scrollToBottom();
-                    lastHistoryLength = history.length;
-                } else if (isInitial) {
-                    messagesDiv.innerHTML = '';
-                    lastTime = null;
-                    history.forEach((item) => {
-                        messagesDiv.appendChild(createMessageWrapper(item));
-                    });
-                    scrollToBottom();
-                    lastHistoryLength = history.length;
-                }
+                const history = JSON.parse(decodeURIComponent(escape(atob(data.content))));
+                history.forEach((item) => {
+                    messagesDiv.appendChild(createMessageWrapper(item));
+                });
                 statusDiv.textContent = '记录已同步';
+                scrollToBottom();
             } catch (e) {
                 statusDiv.textContent = '加载失败';
                 console.error(e);
@@ -410,7 +398,6 @@
             await addToHistory(entry);
             messageInput.value = '';
             statusDiv.textContent = '已同步';
-            lastHistoryLength++;
         }
 
         async function sendFiles() {
@@ -435,7 +422,6 @@
                     scrollToBottom();
 
                     await addToHistory(entry);
-                    lastHistoryLength++;
                 } catch (e) {
                     statusDiv.textContent = '上传失败';
                 }
@@ -449,9 +435,7 @@
             if (!getRes.ok) return;
             const data = await getRes.json();
             let history = JSON.parse(decodeURIComponent(escape(atob(data.content))));
-            const index = history.findIndex(h => h.time === item.time && h.role === item.role && 
-                ((h.type === 'text' && h.content === item.content) || 
-                 (h.type !== 'text' && h.url === item.url)));
+            const index = history.findIndex(h => h.time === item.time);
             if (index === -1) return;
             history.splice(index, 1);
             await fetch(HISTORY_API, {
@@ -467,7 +451,6 @@
             if (item.type !== 'text' && item.path) {
                 await deleteFileFromGitHub(item.path);
             }
-            lastHistoryLength = history.length;
         }
 
         async function deleteFileFromGitHub(path) {
@@ -530,7 +513,7 @@
                     statusDiv.textContent = '正在删除...';
                     element.remove(); // 立即本地移除
                     await deleteMessage(item);
-                    await loadMessages(true); // 全reload确保同步
+                    await loadMessages(); // 全reload，确保同步
                 }
                 actionOverlay.click();
             });
@@ -540,7 +523,7 @@
             currentRole = role;
             roleSelection.style.display = 'none';
             chatContainer.style.display = 'flex';
-            loadMessages(true);
+            loadMessages();
         }
 
         setInterval(() => { if (currentRole) loadMessages(); }, 2000);
