@@ -167,7 +167,8 @@
         let currentRole = null;
         let lastTime = null;
         let selectedMessage = null;
-        let lastHistoryLength = 0; // 新增：跟踪历史长度，用于检测新消息
+        let lastHistoryLength = 0; // 跟踪历史长度，用于检测新消息
+        let lastScrollTop = 0; // 跟踪滚动位置
 
         const messagesDiv = document.getElementById('messages');
         const chatContainer = document.getElementById('chat-container');
@@ -276,11 +277,9 @@
 
             // 调整顺序，确保 sent 的 moreBtn 在左
             if (item.role === currentRole) {
-                // sent: messageDiv 先 (右), moreBtn 后 (左) - 因为 row-reverse
-                container.appendChild(messageDiv);
                 container.appendChild(moreBtn);
+                container.appendChild(messageDiv);
             } else {
-                // received: messageDiv 先 (左), moreBtn 后 (右)
                 container.appendChild(messageDiv);
                 container.appendChild(moreBtn);
             }
@@ -297,28 +296,37 @@
         async function loadMessages(isInitial = false) {
             try {
                 const res = await fetch(HISTORY_API, {headers: {'Authorization': `token ${GITHUB_TOKEN}`}});
-                messagesDiv.innerHTML = '';
-                lastTime = null;
                 let history = [];
                 if (res.status === 404) {
                     await createEmptyHistory();
                     statusDiv.textContent = '新聊天已开始';
                     lastHistoryLength = 0;
-                    scrollToBottom();
+                    messagesDiv.innerHTML = '';
+                    if (isInitial) scrollToBottom();
                     return;
                 }
                 const data = await res.json();
                 history = JSON.parse(decodeURIComponent(escape(atob(data.content))));
-                history.forEach((item, index) => {
-                    messagesDiv.appendChild(createMessageWrapper(item, index));
-                });
-                statusDiv.textContent = '记录已同步';
 
-                // 只在有新消息或初始加载时滚到底部
-                if (isInitial || history.length > lastHistoryLength) {
+                // 只在有新消息时添加新内容，不清空整个列表
+                if (history.length > lastHistoryLength) {
+                    const newMessages = history.slice(lastHistoryLength);
+                    newMessages.forEach((item, index) => {
+                        messagesDiv.appendChild(createMessageWrapper(item, lastHistoryLength + index));
+                    });
                     scrollToBottom();
+                    lastHistoryLength = history.length;
+                } else if (isInitial) {
+                    // 初始加载时渲染所有并滚到底部
+                    messagesDiv.innerHTML = '';
+                    lastTime = null;
+                    history.forEach((item, index) => {
+                        messagesDiv.appendChild(createMessageWrapper(item, index));
+                    });
+                    scrollToBottom();
+                    lastHistoryLength = history.length;
                 }
-                lastHistoryLength = history.length;
+                statusDiv.textContent = '记录已同步';
             } catch (e) {
                 statusDiv.textContent = '加载失败';
                 console.error(e);
