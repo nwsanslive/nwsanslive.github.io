@@ -58,7 +58,6 @@
         .file-info {margin-top:8px;font-size:14px;opacity:0.9;}
         .file-link {color:#5ebff9;text-decoration:underline;display:block;margin-top:4px;}
 
-        /* 新增：消息出现动画 */
         @keyframes messageFadeIn {
             from {
                 opacity: 0;
@@ -126,8 +125,41 @@
         #role-selection {flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;background:#1e1e1e;}
         #role-selection button {margin:15px;padding:14px 32px;font-size:18px;background:#26b460;color:#fff;border:none;border-radius:12px;cursor:pointer;}
         #file-input {display:none;}
-        #fullscreen-overlay {display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.95);align-items:center;justify-content:center;z-index:9999;cursor:pointer;}
-        #fullscreen-img {max-width:95%;max-height:95%;cursor:pointer;}
+
+        /* 全屏图片放大/缩小动画 */
+        #fullscreen-overlay {
+            display:none;
+            position:fixed;
+            top:0;left:0;right:0;bottom:0;
+            background:rgba(0,0,0,0.95);
+            align-items:center;
+            justify-content:center;
+            z-index:9999;
+            opacity:0;
+            transition: opacity 0.3s ease;
+        }
+        #fullscreen-overlay.active {
+            display:flex;
+            opacity:1;
+        }
+        #fullscreen-img {
+            max-width:95%;
+            max-height:95%;
+            cursor:pointer;
+            border-radius:12px;
+            transform: scale(0.8);
+            opacity:0;
+            transition: transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.35s ease;
+        }
+        #fullscreen-overlay.active #fullscreen-img {
+            transform: scale(1);
+            opacity:1;
+        }
+        #fullscreen-overlay.closing #fullscreen-img {
+            transform: scale(0.8);
+            opacity:0;
+        }
+
         #action-sheet {display:none;position:fixed;bottom:0;left:0;right:0;background:#1e1e1e;border-top-left-radius:16px;border-top-right-radius:16px;padding:20px 0;z-index:10000;flex-direction:column;}
         #action-sheet button {padding:16px 24px;font-size:17px;background:transparent;color:#e0e0e0;border:none;text-align:left;margin:0 20px;border-bottom:1px solid #333;}
         #action-sheet button:last-child {border-bottom:none;}
@@ -201,16 +233,24 @@
 
         function openFullscreen(url) {
             fullscreenImg.src = url;
-            fullscreenOverlay.style.display = 'flex';
+            fullscreenOverlay.classList.add('active');
+            fullscreenOverlay.classList.remove('closing');
         }
 
         function closeFullscreen() {
-            fullscreenOverlay.style.display = 'none';
-            fullscreenImg.src = '';
+            fullscreenOverlay.classList.add('closing');
+            fullscreenOverlay.classList.remove('active');
+            setTimeout(() => {
+                fullscreenOverlay.style.display = 'none';
+                fullscreenImg.src = '';
+                fullscreenOverlay.classList.remove('closing');
+            }, 350);
         }
 
         fullscreenOverlay.addEventListener('click', closeFullscreen);
-        fullscreenImg.addEventListener('click', closeFullscreen);
+        fullscreenImg.addEventListener('click', (e) => {
+            e.stopPropagation(); // 点击图片本身不关闭
+        });
 
         function formatTime(dateStr) {
             const d = new Date(dateStr);
@@ -299,7 +339,6 @@
             return group;
         }
 
-        // 修改：平滑滚动到底部
         function scrollToBottom() {
             messagesDiv.scrollTo({
                 top: messagesDiv.scrollHeight,
@@ -327,7 +366,6 @@
                     lastTime = null;
                     history.forEach((item) => {
                         const group = createMessageWrapper(item);
-                        // 初始加载不加动画，避免全部消息一起动画
                         messagesDiv.appendChild(group);
                     });
                     scrollToBottom();
@@ -437,7 +475,7 @@
             throw new Error('重试次数用尽');
         }
 
-        // 悲观发送文本（新增动画）
+        // 发送后键盘保持打开（不收起）
         async function sendMessage() {
             const text = messageInput.value.trim();
             if (!text) return;
@@ -449,12 +487,13 @@
                 const newEntry = await addToHistory(entry);
 
                 const group = createMessageWrapper(newEntry);
-                group.classList.add('new-message'); // 触发出现动画
+                group.classList.add('new-message');
                 messagesDiv.appendChild(group);
                 scrollToBottom();
                 lastHistoryLength++;
 
                 messageInput.value = '';
+                // 不调用 blur()，保持输入框焦点，键盘不会收起，便于连续发送
                 statusDiv.textContent = '已发送';
             } catch (e) {
                 console.error(e);
@@ -462,7 +501,6 @@
             }
         }
 
-        // 悲观发送文件（新增动画）
         async function sendFiles() {
             const files = fileInput.files;
             if (files.length === 0) return;
@@ -487,7 +525,7 @@
                     const newEntry = await addToHistory(entry);
 
                     const group = createMessageWrapper(newEntry);
-                    group.classList.add('new-message'); // 触发出现动画
+                    group.classList.add('new-message');
                     messagesDiv.appendChild(group);
                     scrollToBottom();
                     lastHistoryLength++;
@@ -501,6 +539,7 @@
 
             statusDiv.textContent = successCount === files.length ? '所有附件已发送' : '部分附件发送完成';
             fileInput.value = '';
+            // 发送附件后也不收起键盘，保持焦点
         }
 
         async function deleteMessage(item, retries = 3) {
