@@ -26,25 +26,26 @@
         .file-info {margin-top:8px;font-size:14px;opacity:0.9;}
         .file-link {color:#5ebff9;text-decoration:underline;display:block;margin-top:4px;}
 
-        /* 输入区域自适应优化 */
+        /* 输入区域自适应优化：缩小范围，防止太大或溢出 */
         #input-area {
             flex-shrink:0;
             display:flex;
             align-items:center;
-            padding:10px 12px;
+            padding:8px 10px;
             background:#1e1e1e;
-            padding-bottom:max(10px, env(safe-area-inset-bottom));
-            gap:10px;
+            padding-bottom:max(8px, env(safe-area-inset-bottom));
+            gap: clamp(6px, 2vw, 10px); /* 自适应间隙 */
+            max-width: 100%; /* 防止溢出 */
         }
         #attach-button,
         #message-input,
         #send-button {
-            height: clamp(44px, 10vw, 56px);
-            font-size: clamp(16px, 4vw, 20px);
-            min-height: 44px;
+            height: clamp(36px, 6vw, 48px); /* 缩小范围：小屏36px，大屏不超过48px */
+            font-size: clamp(14px, 3.5vw, 18px); /* 文字自适应，但上限小 */
+            min-height: 36px;
         }
         #attach-button {
-            width: clamp(44px, 10vw, 56px);
+            width: clamp(36px, 6vw, 48px);
             border-radius: 50%;
             background:#26b460;
             color:#fff;
@@ -57,19 +58,19 @@
         }
         #message-input {
             flex:1;
-            padding:0 16px;
+            padding:0 12px;
             border:none;
-            border-radius:22px;
+            border-radius:18px;
             background:#333333;
             color:#fff;
         }
         #message-input:focus {outline:none;}
         #send-button {
-            padding:0 24px;
+            padding:0 clamp(16px, 4vw, 24px); /* padding 自适应，但上限24px */
             background:#26b460;
             color:#fff;
             border:none;
-            border-radius:12px;
+            border-radius:10px;
             cursor:pointer;
             font-weight:bold;
             flex-shrink:0;
@@ -130,6 +131,7 @@
         const GITHUB_TOKEN = urlParams.get('token');
 
         let currentRole = null;
+        let oppositeRole = null; // 新增：明确定义对方角色
         let lastTime = null;
         let selectedMessage = null;
 
@@ -169,6 +171,7 @@
             return diff > 5;
         }
 
+        // 重写消息渲染函数：严格判断当前角色 vs 消息角色
         function createMessageWrapper(item, index) {
             const wrapper = document.createElement('div');
             wrapper.className = 'message-wrapper';
@@ -181,8 +184,10 @@
                 lastTime = item.time;
             }
 
+            // 核心判断：如果 item.role 是当前角色 -> sent (右边)，否则 received (左边)
+            const isSent = item.role === currentRole;
             const container = document.createElement('div');
-            container.className = `message-container ${item.role === currentRole ? 'sent' : 'received'}`;
+            container.className = `message-container ${isSent ? 'sent' : 'received'}`;
 
             const messageDiv = document.createElement('div');
             messageDiv.className = 'message';
@@ -243,22 +248,23 @@
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
 
+        // 重写加载消息函数：强制清空并重载，确保左右正确
         async function loadMessages() {
             try {
                 const res = await fetch(HISTORY_API, {headers: {'Authorization': `token ${GITHUB_TOKEN}`}});
+                messagesDiv.innerHTML = ''; // 强制清空本地显示
+                lastTime = null; // 重置时间戳
                 if (res.status === 404) {
                     await createEmptyHistory();
-                    messagesDiv.innerHTML = '';
-                    statusDiv.textContent = '新聊天已开始';
-                    lastTime = null;
+                    statusDiv.textContent = '新聊天开始，所有消息将正确左右显示';
                     scrollToBottom();
                     return;
                 }
                 const data = await res.json();
                 const history = JSON.parse(decodeURIComponent(escape(atob(data.content))));
-                messagesDiv.innerHTML = '';
-                lastTime = null;
                 history.forEach((item, index) => {
+                    // 调试：打印每个消息的角色
+                    console.log(`加载消息：角色=${item.role}, 当前角色=${currentRole}`);
                     messagesDiv.appendChild(createMessageWrapper(item, index));
                 });
                 statusDiv.textContent = '记录已同步';
@@ -417,11 +423,14 @@
             });
         }
 
+        // 重写角色选择函数：定义对方角色，并强制加载
         function selectRole(role) {
             currentRole = role;
+            oppositeRole = role === '弟弟' ? '哥哥' : '弟弟'; // 明确对方
+            console.log(`选择的角色: ${currentRole}, 对方: ${oppositeRole}`);
             roleSelection.style.display = 'none';
             chatContainer.style.display = 'flex';
-            loadMessages();  // currentRole 已设置，确保左右正确
+            loadMessages(); // 强制重载
         }
 
         actionOverlay.onclick = () => {
