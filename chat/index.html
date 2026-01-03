@@ -114,7 +114,7 @@
         #fullscreen-overlay {display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.95);align-items:center;justify-content:center;z-index:9999;cursor:pointer;}
         #fullscreen-img {max-width:95%;max-height:95%;cursor:pointer;}
         #action-sheet {display:none;position:fixed;bottom:0;left:0;right:0;background:#1e1e1e;border-top-left-radius:16px;border-top-right-radius:16px;padding:20px 0;z-index:10000;flex-direction:column;}
-        #action-sheet button {padding:16px 24px;font-size:17px;background:transparent;color:#e0e0e0;border:none;text-align:left;margin:0 20px;border-bottom:1px solid #333;}
+        #action-sheet button {padding:16px 24px;font-size:17px;background:transparent;color:#e0e0e0;border:none;text-align:left;margin:0 20px;border-bottom:1px solid #333;}
         #action-sheet button:last-child {border-bottom:none;}
         #action-overlay {display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9998;}
     </style>
@@ -293,7 +293,7 @@
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
 
-        async function loadMessages(isInitial = false, forceReload = false) {
+        async function loadMessages(isInitial = false) {
             try {
                 const res = await fetch(HISTORY_API, {headers: {'Authorization': `token ${GITHUB_TOKEN}`}});
                 let history = [];
@@ -308,19 +308,17 @@
                 const data = await res.json();
                 history = JSON.parse(decodeURIComponent(escape(atob(data.content))));
 
-                if (forceReload || isInitial) {
-                    // 强制或初始全渲染
-                    messagesDiv.innerHTML = '';
-                    lastTime = null;
-                    history.forEach((item) => {
+                if (history.length > lastHistoryLength) {
+                    const newMessages = history.slice(lastHistoryLength);
+                    newMessages.forEach((item) => {
                         messagesDiv.appendChild(createMessageWrapper(item));
                     });
                     scrollToBottom();
                     lastHistoryLength = history.length;
-                } else if (history.length > lastHistoryLength) {
-                    // 正常新消息追加
-                    const newMessages = history.slice(lastHistoryLength);
-                    newMessages.forEach((item) => {
+                } else if (isInitial) {
+                    messagesDiv.innerHTML = '';
+                    lastTime = null;
+                    history.forEach((item) => {
                         messagesDiv.appendChild(createMessageWrapper(item));
                     });
                     scrollToBottom();
@@ -339,38 +337,6 @@
                 headers: {'Authorization': `token ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github.v3+json'},
                 body: JSON.stringify({message: 'init', content: btoa('[]'), branch: BRANCH})
             });
-        }
-
-        async function uploadFile(file) {
-            statusDiv.textContent = `上传中：${file.name}`;
-            const ext = file.name.split('.').pop() || '';
-            const filename = Date.now() + '_' + Math.random().toString(36).substr(2, 9) + (ext ? '.' + ext : '');
-            const path = `${FILES_FOLDER}/${filename}`;
-            const url = `https://api.github.com/repos/${REPO}/contents/${path}`;
-
-            const reader = new FileReader();
-            const base64 = await new Promise((resolve, reject) => {
-                reader.onload = () => resolve(reader.result.split(',')[1]);
-                reader.onerror = reject;
-                reader.readAsDataURL(file);
-            });
-
-            const res = await fetch(url, {
-                method: 'PUT',
-                headers: {'Authorization': `token ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github.v3+json'},
-                body: JSON.stringify({
-                    message: `upload ${file.name}`,
-                    content: base64,
-                    branch: BRANCH
-                })
-            });
-
-            if (!res.ok) throw new Error('上传失败');
-            return {
-                filename: file.name,
-                url: `https://raw.githubusercontent.com/${REPO}/${BRANCH}/${path}`,
-                path: path
-            };
         }
 
         async function addToHistory(entry) {
@@ -529,7 +495,7 @@
                     statusDiv.textContent = '正在删除...';
                     element.remove(); // 立即本地移除
                     await deleteMessage(item);
-                    await loadMessages(false, true); // 强制全 reload
+                    await loadMessages(true); // 强制全reload，确保同步
                 }
                 actionOverlay.click();
             });
