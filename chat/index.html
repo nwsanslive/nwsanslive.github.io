@@ -16,6 +16,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+            position: relative; /* 用于粒子定位参考 */
         }
         .timestamp {
             font-size:12px;
@@ -48,7 +49,7 @@
             flex-direction: row;
         }
         .message {max-width:100%;}
-        .text-bubble {padding:11px 16px;border-radius:20px;}
+        .text-bubble {padding:11px 16px;border-radius:20px;position:relative;overflow:hidden;}
         .sent .text-bubble {background:#26b460;color:#ffffff;}
         .received .text-bubble {background:#2c2c2c;color:#e0e0e0;}
         .media-img, .media-video {max-width:100%;height:auto;border-radius:12px;display:block;cursor:pointer;}
@@ -58,6 +59,7 @@
         .file-info {margin-top:8px;font-size:14px;opacity:0.9;}
         .file-link {color:#5ebff9;text-decoration:underline;display:block;margin-top:4px;}
 
+        /* 新消息出现动画 */
         @keyframes messageFadeIn {
             from {
                 opacity: 0;
@@ -72,24 +74,31 @@
             animation: messageFadeIn 0.4s ease-out forwards;
         }
 
-        /* 删除粒子动画 */
-        @keyframes particleBurst {
-            0% {
-                transform: translate(0, 0) scale(1);
-                opacity: 1;
+        /* 删除时气泡碎裂成粒子动画 */
+        @keyframes bubbleBurstFade {
+            to {
+                opacity: 0;
+                transform: scale(0.8);
             }
-            100% {
+        }
+        .bubble-burst {
+            animation: bubbleBurstFade 0.6s ease-out forwards;
+        }
+
+        @keyframes particleFly {
+            to {
                 transform: translate(var(--dx), var(--dy)) scale(0);
                 opacity: 0;
             }
         }
-        .particle {
-            position: fixed;
-            pointer-events: none;
-            width: 8px;
-            height: 8px;
+        .delete-particle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
             border-radius: 50%;
-            animation: particleBurst 0.6s ease-out forwards;
+            background: var(--color);
+            pointer-events: none;
+            animation: particleFly 0.7s ease-out forwards;
             z-index: 9999;
         }
 
@@ -146,41 +155,8 @@
         #role-selection {flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;background:#1e1e1e;}
         #role-selection button {margin:15px;padding:14px 32px;font-size:18px;background:#26b460;color:#fff;border:none;border-radius:12px;cursor:pointer;}
         #file-input {display:none;}
-
-        /* 全屏图片放大/缩小动画 */
-        #fullscreen-overlay {
-            display:none;
-            position:fixed;
-            top:0;left:0;right:0;bottom:0;
-            background:rgba(0,0,0,0.95);
-            align-items:center;
-            justify-content:center;
-            z-index:9999;
-            opacity:0;
-            transition: opacity 0.3s ease;
-        }
-        #fullscreen-overlay.active {
-            display:flex;
-            opacity:1;
-        }
-        #fullscreen-img {
-            max-width:95%;
-            max-height:95%;
-            cursor:pointer;
-            border-radius:12px;
-            transform: scale(0.8);
-            opacity:0;
-            transition: transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.35s ease;
-        }
-        #fullscreen-overlay.active #fullscreen-img {
-            transform: scale(1);
-            opacity:1;
-        }
-        #fullscreen-overlay.closing #fullscreen-img {
-            transform: scale(0.8);
-            opacity:0;
-        }
-
+        #fullscreen-overlay {display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.95);align-items:center;justify-content:center;z-index:9999;cursor:pointer;}
+        #fullscreen-img {max-width:95%;max-height:95%;cursor:pointer;}
         #action-sheet {display:none;position:fixed;bottom:0;left:0;right:0;background:#1e1e1e;border-top-left-radius:16px;border-top-right-radius:16px;padding:20px 0;z-index:10000;flex-direction:column;}
         #action-sheet button {padding:16px 24px;font-size:17px;background:transparent;color:#e0e0e0;border:none;text-align:left;margin:0 20px;border-bottom:1px solid #333;}
         #action-sheet button:last-child {border-bottom:none;}
@@ -254,24 +230,16 @@
 
         function openFullscreen(url) {
             fullscreenImg.src = url;
-            fullscreenOverlay.classList.add('active');
-            fullscreenOverlay.classList.remove('closing');
+            fullscreenOverlay.style.display = 'flex';
         }
 
         function closeFullscreen() {
-            fullscreenOverlay.classList.add('closing');
-            fullscreenOverlay.classList.remove('active');
-            setTimeout(() => {
-                fullscreenOverlay.style.display = 'none';
-                fullscreenImg.src = '';
-                fullscreenOverlay.classList.remove('closing');
-            }, 350);
+            fullscreenOverlay.style.display = 'none';
+            fullscreenImg.src = '';
         }
 
         fullscreenOverlay.addEventListener('click', closeFullscreen);
-        fullscreenImg.addEventListener('click', (e) => {
-            e.stopPropagation();
-        });
+        fullscreenImg.addEventListener('click', closeFullscreen);
 
         function formatTime(dateStr) {
             const d = new Date(dateStr);
@@ -309,45 +277,44 @@
             const messageDiv = document.createElement('div');
             messageDiv.className = 'message';
 
+            let bubbleOrMedia;
             if (item.type === 'text') {
-                const bubble = document.createElement('div');
-                bubble.className = 'text-bubble';
-                bubble.textContent = item.content || '';
-                messageDiv.appendChild(bubble);
+                bubbleOrMedia = document.createElement('div');
+                bubbleOrMedia.className = 'text-bubble';
+                bubbleOrMedia.textContent = item.content || '';
             } else if (item.type === 'image') {
-                const img = document.createElement('img');
-                img.src = item.url;
-                img.className = 'media-img';
-                img.addEventListener('click', () => openFullscreen(item.url));
-                messageDiv.appendChild(img);
+                bubbleOrMedia = document.createElement('img');
+                bubbleOrMedia.src = item.url;
+                bubbleOrMedia.className = 'media-img';
+                bubbleOrMedia.addEventListener('click', () => openFullscreen(item.url));
             } else if (item.type === 'video') {
-                const video = document.createElement('video');
-                video.src = item.url;
-                video.controls = true;
-                video.className = 'media-video';
-                messageDiv.appendChild(video);
+                bubbleOrMedia = document.createElement('video');
+                bubbleOrMedia.src = item.url;
+                bubbleOrMedia.controls = true;
+                bubbleOrMedia.className = 'media-video';
             } else {
-                const bubble = document.createElement('div');
-                bubble.className = 'text-bubble';
+                bubbleOrMedia = document.createElement('div');
+                bubbleOrMedia.className = 'text-bubble';
                 const nameDiv = document.createElement('div');
                 nameDiv.textContent = item.filename;
                 nameDiv.className = 'file-info';
-                bubble.appendChild(nameDiv);
+                bubbleOrMedia.appendChild(nameDiv);
                 const a = document.createElement('a');
                 a.href = item.url;
                 a.textContent = '点击下载';
                 a.className = 'file-link';
                 a.target = '_blank';
-                bubble.appendChild(a);
-                messageDiv.appendChild(bubble);
+                bubbleOrMedia.appendChild(a);
             }
+
+            messageDiv.appendChild(bubbleOrMedia);
 
             const moreBtn = document.createElement('div');
             moreBtn.className = 'more-btn';
             moreBtn.textContent = '⋯';
             moreBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                selectedMessage = {item, element: group};
+                selectedMessage = {item, element: group, bubble: bubbleOrMedia};
                 actionSheet.style.display = 'flex';
                 actionOverlay.style.display = 'block';
             });
@@ -360,51 +327,54 @@
             return group;
         }
 
-        // 新增：粒子消失动画（类似 Telegram 删除效果）
-        function createParticleBurst(element) {
-            const rect = element.getBoundingClientRect();
-            const centerX = rect.left + rect.width / 2 + window.scrollX;
-            const centerY = rect.top + rect.height / 2 + window.scrollY;
-
-            const isSent = element.querySelector('.sent');
-            const particleColor = isSent ? '#26b460' : '#ffffff'; // 发送绿色，接收白色
-
-            for (let i = 0; i < 24; i++) {
-                const particle = document.createElement('div');
-                particle.className = 'particle';
-                particle.style.background = particleColor;
-
-                const angle = Math.random() * Math.PI * 2;
-                const velocity = 60 + Math.random() * 120;
-                const dx = Math.cos(angle) * velocity;
-                const dy = Math.sin(angle) * velocity;
-
-                particle.style.setProperty('--dx', `${dx}px`);
-                particle.style.setProperty('--dy', `${dy}px`);
-                particle.style.left = `${centerX}px`;
-                particle.style.top = `${centerY}px`;
-
-                // 随机大小
-                const size = 4 + Math.random() * 8;
-                particle.style.width = `${size}px`;
-                particle.style.height = `${size}px`;
-
-                document.body.appendChild(particle);
-
-                // 动画结束后自动移除
-                setTimeout(() => {
-                    if (particle.parentNode) {
-                        particle.parentNode.removeChild(particle);
-                    }
-                }, 600);
-            }
-        }
-
         function scrollToBottom() {
             messagesDiv.scrollTo({
                 top: messagesDiv.scrollHeight,
                 behavior: 'smooth'
             });
+        }
+
+        // 新增：气泡碎裂成粒子消失动画
+        function bubbleToParticles(bubbleElement) {
+            const rect = bubbleElement.getBoundingClientRect();
+            const bubbleColor = getComputedStyle(bubbleElement).backgroundColor;
+
+            // 先让气泡淡出缩小
+            bubbleElement.classList.add('bubble-burst');
+
+            // 生成 20-30 个粒子
+            const particleCount = 25;
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'delete-particle';
+                particle.style.setProperty('--color', bubbleColor);
+
+                const angle = (i / particleCount) * Math.PI * 2;
+                const distance = 80 + Math.random() * 120;
+                const dx = Math.cos(angle) * distance;
+                const dy = Math.sin(angle) * distance;
+
+                particle.style.setProperty('--dx', `${dx}px`);
+                particle.style.setProperty('--dy', `${dy}px`);
+
+                // 粒子起始位置为气泡内随机点
+                const offsetX = Math.random() * rect.width - rect.width / 2;
+                const offsetY = Math.random() * rect.height - rect.height / 2;
+
+                particle.style.left = `${rect.left + rect.width / 2 + offsetX + window.scrollX}px`;
+                particle.style.top = `${rect.top + rect.height / 2 + offsetY + window.scrollY}px`;
+
+                // 随机大小
+                const size = 6 + Math.random() * 10;
+                particle.style.width = particle.style.height = `${size}px`;
+
+                document.body.appendChild(particle);
+
+                // 动画结束后移除
+                setTimeout(() => {
+                    if (particle.parentNode) particle.parentNode.removeChild(particle);
+                }, 700);
+            }
         }
 
         async function loadMessages(isInitial = false) {
@@ -426,8 +396,7 @@
                     messagesDiv.innerHTML = '';
                     lastTime = null;
                     history.forEach((item) => {
-                        const group = createMessageWrapper(item);
-                        messagesDiv.appendChild(group);
+                        messagesDiv.appendChild(createMessageWrapper(item));
                     });
                     scrollToBottom();
                     lastHistoryLength = history.length;
@@ -485,48 +454,41 @@
                     if (!getRes.ok) {
                         if (getRes.status === 404) {
                             await createEmptyHistory();
-                            getRes = await fetch(HISTORY_API, {headers: {'Authorization': `token ${GITHUB_TOKEN}`}});
-                            if (!getRes.ok) throw new Error('获取历史失败');
-                        } else {
-                            throw new Error('获取历史失败');
+                            const newGet = await fetch(HISTORY_API, {headers: {'Authorization': `token ${GITHUB_TOKEN}`}});
+                            if (!newGet.ok) throw new Error('获取历史失败');
+                            const newData = await newGet.json();
+                            const history = [];
+                            const currentSha = newData.sha;
+                            const newEntry = {role: currentRole, time: new Date().toISOString(), ...entry};
+                            history.push(newEntry);
+                            const putRes = await fetch(HISTORY_API, {
+                                method: 'PUT',
+                                headers: {'Authorization': `token ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github.v3+json'},
+                                body: JSON.stringify({message: 'new message', content: btoa(unescape(encodeURIComponent(JSON.stringify(history)))), sha: currentSha, branch: BRANCH})
+                            });
+                            if (putRes.ok) return newEntry;
                         }
+                        throw new Error('获取历史失败');
                     }
 
                     const data = await getRes.json();
-                    let history = [];
-                    if (data.content) {
-                        history = JSON.parse(decodeURIComponent(escape(atob(data.content))));
-                    }
+                    let history = data.content ? JSON.parse(decodeURIComponent(escape(atob(data.content)))) : [];
                     const currentSha = data.sha;
 
-                    const newEntry = {
-                        role: currentRole,
-                        time: new Date().toISOString(),
-                        ...entry
-                    };
-
+                    const newEntry = {role: currentRole, time: new Date().toISOString(), ...entry};
                     history.push(newEntry);
 
                     const putRes = await fetch(HISTORY_API, {
                         method: 'PUT',
                         headers: {'Authorization': `token ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github.v3+json'},
-                        body: JSON.stringify({
-                            message: 'new message',
-                            content: btoa(unescape(encodeURIComponent(JSON.stringify(history)))),
-                            sha: currentSha,
-                            branch: BRANCH
-                        })
+                        body: JSON.stringify({message: 'new message', content: btoa(unescape(encodeURIComponent(JSON.stringify(history)))), sha: currentSha, branch: BRANCH})
                     });
 
-                    if (putRes.ok) {
-                        return newEntry;
-                    }
-
+                    if (putRes.ok) return newEntry;
                     if (putRes.status === 409) {
                         statusDiv.textContent = '检测到并发，正在重试...';
                         continue;
                     }
-
                     throw new Error('同步失败');
                 } catch (e) {
                     console.error(e);
@@ -571,16 +533,9 @@
 
                 try {
                     const uploaded = await uploadFile(file);
-                    const type = file.type.startsWith('image/') ? 'image' :
-                                 file.type.startsWith('video/') ? 'video' : 'file';
+                    const type = file.type.startsWith('image/') ? 'image' : file.type.startsWith('video/') ? 'video' : 'file';
 
-                    const entry = {
-                        type: type,
-                        filename: uploaded.filename,
-                        url: uploaded.url,
-                        path: uploaded.path
-                    };
-
+                    const entry = {type, filename: uploaded.filename, url: uploaded.url, path: uploaded.path};
                     const newEntry = await addToHistory(entry);
 
                     const group = createMessageWrapper(newEntry);
@@ -625,9 +580,7 @@
                     });
 
                     if (putRes.ok) {
-                        if (item.type !== 'text' && item.path) {
-                            await deleteFileFromGitHub(item.path);
-                        }
+                        if (item.type !== 'text' && item.path) await deleteFileFromGitHub(item.path);
                         return;
                     }
 
@@ -653,19 +606,11 @@
             await fetch(deleteUrl, {
                 method: 'DELETE',
                 headers: {'Authorization': `token ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github.v3+json'},
-                body: JSON.stringify({
-                    message: 'delete file',
-                    sha: data.sha,
-                    branch: BRANCH
-                })
+                body: JSON.stringify({message: 'delete file', sha: data.sha, branch: BRANCH})
             });
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-            const actionReply = document.getElementById('action-reply');
-            const actionDelete = document.getElementById('action-delete');
-            const actionCopy = document.getElementById('action-copy');
-
             document.getElementById('role-didi').addEventListener('click', () => selectRole('弟弟'));
             document.getElementById('role-gege').addEventListener('click', () => selectRole('哥哥'));
 
@@ -685,14 +630,14 @@
                 actionOverlay.style.display = 'none';
             });
 
-            actionCopy.addEventListener('click', () => {
+            document.getElementById('action-copy').addEventListener('click', () => {
                 if (selectedMessage && selectedMessage.item.type === 'text') {
                     navigator.clipboard.writeText(selectedMessage.item.content);
                 }
                 actionOverlay.click();
             });
 
-            actionReply.addEventListener('click', () => {
+            document.getElementById('action-reply').addEventListener('click', () => {
                 if (selectedMessage) {
                     messageInput.value = `回复 ${selectedMessage.item.role === currentRole ? '自己' : '对方'}: `;
                     messageInput.focus();
@@ -700,11 +645,11 @@
                 actionOverlay.click();
             });
 
-            // 删除时添加粒子消失动画（类似 Telegram）
-            actionDelete.addEventListener('click', async () => {
+            // 删除动画：气泡碎裂成粒子
+            document.getElementById('action-delete').addEventListener('click', async () => {
                 if (!selectedMessage) return;
 
-                const {item, element} = selectedMessage;
+                const {item, bubble} = selectedMessage;
 
                 if (item.role !== currentRole) {
                     actionOverlay.click();
@@ -714,16 +659,16 @@
                 statusDiv.textContent = '正在删除...';
 
                 try {
+                    // 触发气泡碎裂粒子动画
+                    bubbleToParticles(bubble);
+
                     await deleteMessage(item);
 
-                    // 触发粒子动画
-                    createParticleBurst(element);
-
-                    // 动画播放期间保持元素，结束后刷新列表
+                    // 动画播放完后再刷新列表
                     setTimeout(async () => {
                         await loadMessages(true);
                         statusDiv.textContent = '已删除';
-                    }, 600);
+                    }, 700);
 
                 } catch (e) {
                     console.error('删除失败', e);
