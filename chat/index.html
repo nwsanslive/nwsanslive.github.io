@@ -276,13 +276,9 @@
                 actionOverlay.style.display = 'block';
             });
 
-            if (item.role === currentRole) {
-                container.appendChild(messageDiv);
-                container.appendChild(moreBtn);
-            } else {
-                container.appendChild(messageDiv);
-                container.appendChild(moreBtn);
-            }
+            // 统一追加顺序，结合 flex-direction: row-reverse 实现“更多按钮始终靠近气泡”
+            container.appendChild(messageDiv);
+            container.appendChild(moreBtn);
 
             wrapper.appendChild(container);
             group.appendChild(wrapper);
@@ -308,7 +304,6 @@
                 const data = await res.json();
                 history = JSON.parse(decodeURIComponent(escape(atob(data.content))));
 
-                // 任何 length 变化都全 reload，确保删除同步
                 if (history.length !== lastHistoryLength || isInitial) {
                     messagesDiv.innerHTML = '';
                     lastTime = null;
@@ -478,6 +473,11 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
+            // 添加缺失的 DOM 元素引用（这是原代码的主要错误）
+            const actionReply = document.getElementById('action-reply');
+            const actionDelete = document.getElementById('action-delete');
+            const actionCopy = document.getElementById('action-copy');
+
             document.getElementById('role-didi').addEventListener('click', () => selectRole('弟弟'));
             document.getElementById('role-gege').addEventListener('click', () => selectRole('哥哥'));
 
@@ -521,7 +521,8 @@
                     statusDiv.textContent = '正在删除...';
                     element.remove(); // 立即本地移除
                     await deleteMessage(item);
-                    await loadMessages(true); // 强制全 reload
+                    await loadMessages(true); // 强制重新加载，确保同步
+                    statusDiv.textContent = '已删除';
                 }
                 actionOverlay.click();
             });
