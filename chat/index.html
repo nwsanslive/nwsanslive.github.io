@@ -33,16 +33,18 @@
         }
         .message-container {
             display:flex;
+            flex-direction: row; /* 显式声明，确保布局正确 */
             align-items:flex-end;
             gap:10px;
             max-width:85%;
             width:fit-content;
         }
-        .sent .message-container {
+        /* 关键修复：无空格的选择器，确保 sent/received 生效 */
+        .message-container.sent {
             margin-left:auto;
             justify-content:flex-end;
         }
-        .received .message-container {
+        .message-container.received {
             margin-right:auto;
             justify-content:flex-start;
         }
@@ -216,8 +218,11 @@
             const wrapper = document.createElement('div');
             wrapper.className = 'message-wrapper';
 
+            const containerClass = item.role === currentRole ? 'message-container sent' : 'message-container received';
             const container = document.createElement('div');
-            container.className = `message-container ${item.role === currentRole ? 'sent' : 'received'}`;
+            container.className = containerClass;
+            // 调试：打印类名
+            console.log(`消息角色: ${item.role}, 当前角色: ${currentRole}, 类名: ${containerClass}`);
 
             const messageDiv = document.createElement('div');
             messageDiv.className = 'message';
@@ -458,7 +463,6 @@
             loadMessages();
         }
 
-        // 事件绑定（完整保留，确保发送按钮有效）
         actionOverlay.onclick = () => {
             actionSheet.style.display = 'none';
             actionOverlay.style.display = 'none';
@@ -498,9 +502,9 @@
 
         attachButton.onclick = () => fileInput.click();
         fileInput.onchange = sendFiles;
-        sendButton.onclick = sendMessage;  // 关键：发送按钮绑定
+        sendButton.onclick = sendMessage;
         messageInput.onkeydown = e => {
-            if (e.key === 'Enter' && !e.shiftKey) {  // 回车发送（不带Shift）
+            if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 sendMessage();
             }
