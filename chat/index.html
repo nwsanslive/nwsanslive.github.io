@@ -25,11 +25,57 @@
         .message-container:hover .more-btn {opacity:1;}
         .file-info {margin-top:8px;font-size:14px;opacity:0.9;}
         .file-link {color:#5ebff9;text-decoration:underline;display:block;margin-top:4px;}
-        #input-area {flex-shrink:0;display:flex;align-items:center;padding:10px 12px;background:#1e1e1e;padding-bottom:max(10px, env(safe-area-inset-bottom));gap:8px;}
-        #attach-button {width:44px;height:44px;background:#26b460;color:#fff;border:none;border-radius:22px;cursor:pointer;font-size:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-        #message-input {flex:1;height:44px;padding:0 16px;border:none;border-radius:22px;background:#333333;color:#fff;font-size:16px;}
+
+        /* 输入区域自适应优化 */
+        #input-area {
+            flex-shrink:0;
+            display:flex;
+            align-items:center;
+            padding:10px 12px;
+            background:#1e1e1e;
+            padding-bottom:max(10px, env(safe-area-inset-bottom));
+            gap:10px;
+        }
+        #attach-button,
+        #message-input,
+        #send-button {
+            height: clamp(44px, 10vw, 56px);
+            font-size: clamp(16px, 4vw, 20px);
+            min-height: 44px;
+        }
+        #attach-button {
+            width: clamp(44px, 10vw, 56px);
+            border-radius: 50%;
+            background:#26b460;
+            color:#fff;
+            border:none;
+            cursor:pointer;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            flex-shrink:0;
+        }
+        #message-input {
+            flex:1;
+            padding:0 16px;
+            border:none;
+            border-radius:22px;
+            background:#333333;
+            color:#fff;
+        }
         #message-input:focus {outline:none;}
-        #send-button {margin-left:8px;padding:0 20px;height:44px;background:#26b460;color:#fff;border:none;border-radius:12px;cursor:pointer;font-size:16px;font-weight:bold;flex-shrink:0;}
+        #send-button {
+            padding:0 24px;
+            background:#26b460;
+            color:#fff;
+            border:none;
+            border-radius:12px;
+            cursor:pointer;
+            font-weight:bold;
+            flex-shrink:0;
+            white-space: nowrap;
+        }
+
         #role-selection {flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;background:#1e1e1e;}
         #role-selection button {margin:15px;padding:14px 32px;font-size:18px;background:#26b460;color:#fff;border:none;border-radius:12px;cursor:pointer;}
         #file-input {display:none;}
@@ -216,7 +262,7 @@
                     messagesDiv.appendChild(createMessageWrapper(item, index));
                 });
                 statusDiv.textContent = '记录已同步';
-                scrollToBottom();  // 始终滚到底部
+                scrollToBottom();
             } catch (e) {
                 statusDiv.textContent = '加载失败';
                 console.error(e);
@@ -375,7 +421,7 @@
             currentRole = role;
             roleSelection.style.display = 'none';
             chatContainer.style.display = 'flex';
-            loadMessages();  // 这里 currentRole 已设置，确保左右侧正确
+            loadMessages();  // currentRole 已设置，确保左右正确
         }
 
         actionOverlay.onclick = () => {
