@@ -9,14 +9,25 @@
         body {background-color:#111111;color:#e0e0e0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;margin:0;padding:0;height:100dvh;display:flex;flex-direction:column;overflow:hidden;}
         #header {height:56px;background:#1e1e1e;display:flex;align-items:center;padding:0 16px;font-size:18px;font-weight:bold;border-bottom:1px solid #333;flex-shrink:0;}
         .status {text-align:center;padding:6px;font-size:13px;color:#aaa;flex-shrink:0;}
-        #messages {flex:1 1 auto;overflow-y:auto;padding:15px;display:flex;flex-direction:column;gap:20px;-webkit-overflow-scrolling:touch;min-height:0;scroll-behavior:smooth;}
+        #messages {
+            flex:1 1 auto;
+            overflow-y:auto;
+            padding:15px;
+            display:flex;
+            flex-direction:column;
+            gap:20px;
+            -webkit-overflow-scrolling:touch;
+            min-height:0;
+            scroll-behavior:smooth;
+            position: relative;     /* 修复粒子被裁剪 */
+            z-index: 1;
+        }
 
         .message-group {
             width: 100%;
             display: flex;
             flex-direction: column;
             align-items: center;
-            position: relative; /* 用于粒子定位参考 */
         }
         .timestamp {
             font-size:12px;
@@ -61,25 +72,16 @@
 
         /* 新消息出现动画 */
         @keyframes messageFadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from {opacity: 0; transform: translateY(20px);}
+            to {opacity: 1; transform: translateY(0);}
         }
         .message-group.new-message {
             animation: messageFadeIn 0.4s ease-out forwards;
         }
 
-        /* 删除时气泡碎裂成粒子动画 */
+        /* 删除时气泡淡出缩小 + 粒子飞散 */
         @keyframes bubbleBurstFade {
-            to {
-                opacity: 0;
-                transform: scale(0.8);
-            }
+            to {opacity: 0; transform: scale(0.8);}
         }
         .bubble-burst {
             animation: bubbleBurstFade 0.6s ease-out forwards;
@@ -92,7 +94,7 @@
             }
         }
         .delete-particle {
-            position: absolute;
+            position: fixed;   /* 改为 fixed，避免被 messages 容器裁剪 */
             width: 10px;
             height: 10px;
             border-radius: 50%;
@@ -334,46 +336,50 @@
             });
         }
 
-        // 新增：气泡碎裂成粒子消失动画
+        // 修复后的粒子动画函数（保证粒子可见）
         function bubbleToParticles(bubbleElement) {
-            const rect = bubbleElement.getBoundingClientRect();
-            const bubbleColor = getComputedStyle(bubbleElement).backgroundColor;
+            if (!bubbleElement) return;
 
-            // 先让气泡淡出缩小
+            const rect = bubbleElement.getBoundingClientRect();
+            // 对于非文本消息（如图片），backgroundColor 可能为 transparent，取父容器颜色或默认
+            let bubbleColor = getComputedStyle(bubbleElement).backgroundColor;
+            if (bubbleColor === 'rgba(0, 0, 0, 0)' || bubbleColor === 'transparent') {
+                bubbleColor = bubbleElement.closest('.sent') ? '#26b460' : '#2c2c2c';
+            }
+
+            // 气泡淡出缩小
             bubbleElement.classList.add('bubble-burst');
 
-            // 生成 20-30 个粒子
             const particleCount = 25;
             for (let i = 0; i < particleCount; i++) {
                 const particle = document.createElement('div');
                 particle.className = 'delete-particle';
                 particle.style.setProperty('--color', bubbleColor);
 
-                const angle = (i / particleCount) * Math.PI * 2;
-                const distance = 80 + Math.random() * 120;
+                const angle = (i / particleCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.6;
+                const distance = 80 + Math.random() * 140;
                 const dx = Math.cos(angle) * distance;
                 const dy = Math.sin(angle) * distance;
 
                 particle.style.setProperty('--dx', `${dx}px`);
                 particle.style.setProperty('--dy', `${dy}px`);
 
-                // 粒子起始位置为气泡内随机点
+                // 随机起始偏移（气泡内部）
                 const offsetX = Math.random() * rect.width - rect.width / 2;
                 const offsetY = Math.random() * rect.height - rect.height / 2;
 
-                particle.style.left = `${rect.left + rect.width / 2 + offsetX + window.scrollX}px`;
-                particle.style.top = `${rect.top + rect.height / 2 + offsetY + window.scrollY}px`;
+                // 关键修复：加上页面滚动偏移
+                particle.style.left = `${rect.left + rect.width / 2 + offsetX + window.pageXOffset}px`;
+                particle.style.top = `${rect.top + rect.height / 2 + offsetY + window.pageYOffset}px`;
 
-                // 随机大小
                 const size = 6 + Math.random() * 10;
                 particle.style.width = particle.style.height = `${size}px`;
 
                 document.body.appendChild(particle);
 
-                // 动画结束后移除
                 setTimeout(() => {
                     if (particle.parentNode) particle.parentNode.removeChild(particle);
-                }, 700);
+                }, 800);
             }
         }
 
@@ -457,7 +463,7 @@
                             const newGet = await fetch(HISTORY_API, {headers: {'Authorization': `token ${GITHUB_TOKEN}`}});
                             if (!newGet.ok) throw new Error('获取历史失败');
                             const newData = await newGet.json();
-                            const history = [];
+                            let history = [];
                             const currentSha = newData.sha;
                             const newEntry = {role: currentRole, time: new Date().toISOString(), ...entry};
                             history.push(newEntry);
@@ -645,7 +651,6 @@
                 actionOverlay.click();
             });
 
-            // 删除动画：气泡碎裂成粒子
             document.getElementById('action-delete').addEventListener('click', async () => {
                 if (!selectedMessage) return;
 
@@ -659,16 +664,16 @@
                 statusDiv.textContent = '正在删除...';
 
                 try {
-                    // 触发气泡碎裂粒子动画
+                    // 触发粒子动画
                     bubbleToParticles(bubble);
 
                     await deleteMessage(item);
 
-                    // 动画播放完后再刷新列表
+                    // 等待动画完成再刷新
                     setTimeout(async () => {
                         await loadMessages(true);
                         statusDiv.textContent = '已删除';
-                    }, 700);
+                    }, 800);
 
                 } catch (e) {
                     console.error('删除失败', e);
