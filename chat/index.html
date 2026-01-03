@@ -328,7 +328,6 @@
         }
 
         async function uploadFile(file) {
-            statusDiv.textContent = `上传中：${file.name}`;
             const ext = file.name.split('.').pop() || '';
             const filename = Date.now() + '_' + Math.random().toString(36).substr(2, 9) + (ext ? '.' + ext : '');
             const path = `${FILES_FOLDER}/${filename}`;
@@ -368,13 +367,15 @@
                 sha = data.sha;
             }
 
-            history.push({
+            const newEntry = {
                 role: currentRole,
                 time: new Date().toISOString(),
                 ...entry
-            });
+            };
 
-            await fetch(HISTORY_API, {
+            history.push(newEntry);
+
+            const putRes = await fetch(HISTORY_API, {
                 method: 'PUT',
                 headers: {'Authorization': `token ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github.v3+json'},
                 body: JSON.stringify({
@@ -384,28 +385,46 @@
                     branch: BRANCH
                 })
             });
+
+            if (!putRes.ok) throw new Error('同步失败');
+
+            return newEntry; // 返回新增的完整 entry（包含 time）
         }
 
+        // 悲观发送文本：先上传 GitHub 成功后再本地显示
         async function sendMessage() {
             const text = messageInput.value.trim();
             if (!text) return;
 
-            const entry = {type: 'text', content: text};
-            const group = createMessageWrapper({...entry, time: new Date().toISOString(), role: currentRole});
-            messagesDiv.appendChild(group);
-            scrollToBottom();
+            statusDiv.textContent = '正在发送...';
 
-            await addToHistory(entry);
-            messageInput.value = '';
-            statusDiv.textContent = '已同步';
-            lastHistoryLength++;
+            try {
+                const entry = {type: 'text', content: text};
+                const newEntry = await addToHistory(entry); // 先上传
+
+                // 成功后本地追加
+                messagesDiv.appendChild(createMessageWrapper(newEntry));
+                scrollToBottom();
+                lastHistoryLength++; // 保持与服务器同步，防止轮询重绘
+
+                messageInput.value = '';
+                statusDiv.textContent = '已发送';
+            } catch (e) {
+                console.error(e);
+                statusDiv.textContent = '发送失败，请重试';
+            }
         }
 
+        // 悲观发送文件：每个文件先上传 + 同步 GitHub 成功后再本地显示
         async function sendFiles() {
             const files = fileInput.files;
             if (files.length === 0) return;
 
+            let successCount = 0;
+
             for (let file of files) {
+                statusDiv.textContent = `正在上传 ${file.name}...`;
+
                 try {
                     const uploaded = await uploadFile(file);
                     const type = file.type.startsWith('image/') ? 'image' :
@@ -418,17 +437,22 @@
                         path: uploaded.path
                     };
 
-                    const group = createMessageWrapper({...entry, time: new Date().toISOString(), role: currentRole});
-                    messagesDiv.appendChild(group);
-                    scrollToBottom();
+                    const newEntry = await addToHistory(entry); // 先同步到历史
 
-                    await addToHistory(entry);
+                    // 成功后本地追加
+                    messagesDiv.appendChild(createMessageWrapper(newEntry));
+                    scrollToBottom();
                     lastHistoryLength++;
+
+                    successCount++;
                 } catch (e) {
-                    statusDiv.textContent = '上传失败';
+                    console.error(e);
+                    statusDiv.textContent = `${file.name} 上传失败`;
+                    // 继续处理下一个文件
                 }
             }
-            statusDiv.textContent = '所有附件已同步';
+
+            statusDiv.textContent = successCount === files.length ? '所有附件已发送' : '部分附件发送完成';
             fileInput.value = '';
         }
 
@@ -510,7 +534,7 @@
                 actionOverlay.click();
             });
 
-            // 已改为悲观删除：先彻底删除 GitHub 数据，再刷新页面
+            // 删除仍是悲观：先删除 GitHub，再刷新列表
             actionDelete.addEventListener('click', async () => {
                 if (!selectedMessage) return;
 
@@ -524,12 +548,12 @@
                 statusDiv.textContent = '正在删除...';
 
                 try {
-                    await deleteMessage(item);  // 先删除 GitHub（历史 + 文件）
-                    await loadMessages(true);   // 刷新整个列表，消息会消失
+                    await deleteMessage(item);
+                    await loadMessages(true);
                     statusDiv.textContent = '已删除';
                 } catch (e) {
                     console.error('删除失败', e);
-                    await loadMessages(true);   // 失败也刷新，恢复原状
+                    await loadMessages(true);
                     statusDiv.textContent = '删除失败，请重试';
                 }
 
