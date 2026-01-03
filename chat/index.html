@@ -178,9 +178,6 @@
         const fullscreenImg = document.getElementById('fullscreen-img');
         const actionOverlay = document.getElementById('action-overlay');
         const actionSheet = document.getElementById('action-sheet');
-        const actionReply = document.getElementById('action-reply');
-        const actionDelete = document.getElementById('action-delete');
-        const actionCopy = document.getElementById('action-copy');
 
         if (!GITHUB_TOKEN || !GITHUB_TOKEN.startsWith('ghp_')) {
             document.body.innerHTML = `<div style="padding:50px;text-align:center;color:#fff;"><h2>缺少 Token</h2><p>请使用带 ?token= 的链接访问</p></div>`;
@@ -274,7 +271,7 @@
             moreBtn.textContent = '⋯';
             moreBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                selectedMessage = {item, element: wrapper};
+                selectedMessage = {item, element: group};
                 actionSheet.style.display = 'flex';
                 actionOverlay.style.display = 'block';
             });
@@ -311,14 +308,8 @@
                 const data = await res.json();
                 history = JSON.parse(decodeURIComponent(escape(atob(data.content))));
 
-                if (history.length > lastHistoryLength) {
-                    const newMessages = history.slice(lastHistoryLength);
-                    newMessages.forEach((item) => {
-                        messagesDiv.appendChild(createMessageWrapper(item));
-                    });
-                    scrollToBottom();
-                    lastHistoryLength = history.length;
-                } else if (isInitial) {
+                // 任何 length 变化都全 reload，确保删除同步
+                if (history.length !== lastHistoryLength || isInitial) {
                     messagesDiv.innerHTML = '';
                     lastTime = null;
                     history.forEach((item) => {
@@ -340,6 +331,38 @@
                 headers: {'Authorization': `token ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github.v3+json'},
                 body: JSON.stringify({message: 'init', content: btoa('[]'), branch: BRANCH})
             });
+        }
+
+        async function uploadFile(file) {
+            statusDiv.textContent = `上传中：${file.name}`;
+            const ext = file.name.split('.').pop() || '';
+            const filename = Date.now() + '_' + Math.random().toString(36).substr(2, 9) + (ext ? '.' + ext : '');
+            const path = `${FILES_FOLDER}/${filename}`;
+            const url = `https://api.github.com/repos/${REPO}/contents/${path}`;
+
+            const reader = new FileReader();
+            const base64 = await new Promise((resolve, reject) => {
+                reader.onload = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+
+            const res = await fetch(url, {
+                method: 'PUT',
+                headers: {'Authorization': `token ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github.v3+json'},
+                body: JSON.stringify({
+                    message: `upload ${file.name}`,
+                    content: base64,
+                    branch: BRANCH
+                })
+            });
+
+            if (!res.ok) throw new Error('上传失败');
+            return {
+                filename: file.name,
+                url: `https://raw.githubusercontent.com/${REPO}/${BRANCH}/${path}`,
+                path: path
+            };
         }
 
         async function addToHistory(entry) {
@@ -490,15 +513,16 @@
             });
 
             actionDelete.addEventListener('click', async () => {
-                if (!selectedMessage || !selectedMessage.item || selectedMessage.item.role !== currentRole) return;
+                if (!selectedMessage) return;
 
-                const element = selectedMessage.element;
-                const item = selectedMessage.item;
+                const {item, element} = selectedMessage;
 
-                statusDiv.textContent = '正在删除...';
-                element.remove(); // 立即本地移除
-                await deleteMessage(item);
-                await loadMessages(true); // 强制全reload，确保同步成功
+                if (item.role === currentRole) {
+                    statusDiv.textContent = '正在删除...';
+                    element.remove(); // 立即本地移除
+                    await deleteMessage(item);
+                    await loadMessages(true); // 强制全 reload
+                }
                 actionOverlay.click();
             });
         });
