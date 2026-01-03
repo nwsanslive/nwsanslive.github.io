@@ -58,7 +58,7 @@
         .file-info {margin-top:8px;font-size:14px;opacity:0.9;}
         .file-link {color:#5ebff9;text-decoration:underline;display:block;margin-top:4px;}
 
-        /* 新消息平滑出现动画 */
+        /* 新增：消息出现动画 */
         @keyframes messageFadeIn {
             from {
                 opacity: 0;
@@ -71,40 +71,6 @@
         }
         .message-group.new-message {
             animation: messageFadeIn 0.4s ease-out forwards;
-        }
-
-        /* 图片全屏放大缩小动画 */
-        #fullscreen-overlay {
-            display:none;
-            position:fixed;
-            top:0;left:0;right:0;bottom:0;
-            background:rgba(0,0,0,0.95);
-            align-items:center;
-            justify-content:center;
-            z-index:9999;
-            opacity:0;
-            transition: opacity 0.3s ease;
-        }
-        #fullscreen-overlay.active {
-            display:flex;
-            opacity:1;
-        }
-        #fullscreen-img {
-            max-width:95%;
-            max-height:95%;
-            cursor:pointer;
-            border-radius:12px;
-            transform: scale(0.8);
-            opacity:0;
-            transition: transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.35s ease;
-        }
-        #fullscreen-overlay.active #fullscreen-img {
-            transform: scale(1);
-            opacity:1;
-        }
-        #fullscreen-overlay.closing #fullscreen-img {
-            transform: scale(0.8);
-            opacity:0;
         }
 
         #input-area {
@@ -160,6 +126,8 @@
         #role-selection {flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;background:#1e1e1e;}
         #role-selection button {margin:15px;padding:14px 32px;font-size:18px;background:#26b460;color:#fff;border:none;border-radius:12px;cursor:pointer;}
         #file-input {display:none;}
+        #fullscreen-overlay {display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.95);align-items:center;justify-content:center;z-index:9999;cursor:pointer;}
+        #fullscreen-img {max-width:95%;max-height:95%;cursor:pointer;}
         #action-sheet {display:none;position:fixed;bottom:0;left:0;right:0;background:#1e1e1e;border-top-left-radius:16px;border-top-right-radius:16px;padding:20px 0;z-index:10000;flex-direction:column;}
         #action-sheet button {padding:16px 24px;font-size:17px;background:transparent;color:#e0e0e0;border:none;text-align:left;margin:0 20px;border-bottom:1px solid #333;}
         #action-sheet button:last-child {border-bottom:none;}
@@ -233,24 +201,16 @@
 
         function openFullscreen(url) {
             fullscreenImg.src = url;
-            fullscreenOverlay.classList.add('active');
-            fullscreenOverlay.classList.remove('closing');
+            fullscreenOverlay.style.display = 'flex';
         }
 
         function closeFullscreen() {
-            fullscreenOverlay.classList.add('closing');
-            fullscreenOverlay.classList.remove('active');
-            setTimeout(() => {
-                fullscreenOverlay.style.display = 'none';
-                fullscreenImg.src = '';
-                fullscreenOverlay.classList.remove('closing');
-            }, 350);
+            fullscreenOverlay.style.display = 'none';
+            fullscreenImg.src = '';
         }
 
         fullscreenOverlay.addEventListener('click', closeFullscreen);
-        fullscreenImg.addEventListener('click', (e) => {
-            e.stopPropagation();
-        });
+        fullscreenImg.addEventListener('click', closeFullscreen);
 
         function formatTime(dateStr) {
             const d = new Date(dateStr);
@@ -339,6 +299,7 @@
             return group;
         }
 
+        // 修改：平滑滚动到底部
         function scrollToBottom() {
             messagesDiv.scrollTo({
                 top: messagesDiv.scrollHeight,
@@ -365,7 +326,9 @@
                     messagesDiv.innerHTML = '';
                     lastTime = null;
                     history.forEach((item) => {
-                        messagesDiv.appendChild(createMessageWrapper(item));
+                        const group = createMessageWrapper(item);
+                        // 初始加载不加动画，避免全部消息一起动画
+                        messagesDiv.appendChild(group);
                     });
                     scrollToBottom();
                     lastHistoryLength = history.length;
@@ -423,41 +386,48 @@
                     if (!getRes.ok) {
                         if (getRes.status === 404) {
                             await createEmptyHistory();
-                            const newGet = await fetch(HISTORY_API, {headers: {'Authorization': `token ${GITHUB_TOKEN}`}});
-                            if (!newGet.ok) throw new Error('获取历史失败');
-                            const newData = await newGet.json();
-                            let history = [];
-                            const currentSha = newData.sha;
-                            const newEntry = {role: currentRole, time: new Date().toISOString(), ...entry};
-                            history.push(newEntry);
-                            const putRes = await fetch(HISTORY_API, {
-                                method: 'PUT',
-                                headers: {'Authorization': `token ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github.v3+json'},
-                                body: JSON.stringify({message: 'new message', content: btoa(unescape(encodeURIComponent(JSON.stringify(history)))), sha: currentSha, branch: BRANCH})
-                            });
-                            if (putRes.ok) return newEntry;
+                            getRes = await fetch(HISTORY_API, {headers: {'Authorization': `token ${GITHUB_TOKEN}`}});
+                            if (!getRes.ok) throw new Error('获取历史失败');
+                        } else {
+                            throw new Error('获取历史失败');
                         }
-                        throw new Error('获取历史失败');
                     }
 
                     const data = await getRes.json();
-                    let history = data.content ? JSON.parse(decodeURIComponent(escape(atob(data.content)))) : [];
+                    let history = [];
+                    if (data.content) {
+                        history = JSON.parse(decodeURIComponent(escape(atob(data.content))));
+                    }
                     const currentSha = data.sha;
 
-                    const newEntry = {role: currentRole, time: new Date().toISOString(), ...entry};
+                    const newEntry = {
+                        role: currentRole,
+                        time: new Date().toISOString(),
+                        ...entry
+                    };
+
                     history.push(newEntry);
 
                     const putRes = await fetch(HISTORY_API, {
                         method: 'PUT',
                         headers: {'Authorization': `token ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github.v3+json'},
-                        body: JSON.stringify({message: 'new message', content: btoa(unescape(encodeURIComponent(JSON.stringify(history)))), sha: currentSha, branch: BRANCH})
+                        body: JSON.stringify({
+                            message: 'new message',
+                            content: btoa(unescape(encodeURIComponent(JSON.stringify(history)))),
+                            sha: currentSha,
+                            branch: BRANCH
+                        })
                     });
 
-                    if (putRes.ok) return newEntry;
+                    if (putRes.ok) {
+                        return newEntry;
+                    }
+
                     if (putRes.status === 409) {
                         statusDiv.textContent = '检测到并发，正在重试...';
                         continue;
                     }
+
                     throw new Error('同步失败');
                 } catch (e) {
                     console.error(e);
@@ -467,7 +437,7 @@
             throw new Error('重试次数用尽');
         }
 
-        // 发送消息：键盘不收起
+        // 悲观发送文本（新增动画）
         async function sendMessage() {
             const text = messageInput.value.trim();
             if (!text) return;
@@ -479,12 +449,12 @@
                 const newEntry = await addToHistory(entry);
 
                 const group = createMessageWrapper(newEntry);
-                group.classList.add('new-message');
+                group.classList.add('new-message'); // 触发出现动画
                 messagesDiv.appendChild(group);
                 scrollToBottom();
                 lastHistoryLength++;
 
-                messageInput.value = '';  // 清空内容，但不 blur，键盘保持打开
+                messageInput.value = '';
                 statusDiv.textContent = '已发送';
             } catch (e) {
                 console.error(e);
@@ -492,6 +462,7 @@
             }
         }
 
+        // 悲观发送文件（新增动画）
         async function sendFiles() {
             const files = fileInput.files;
             if (files.length === 0) return;
@@ -516,7 +487,7 @@
                     const newEntry = await addToHistory(entry);
 
                     const group = createMessageWrapper(newEntry);
-                    group.classList.add('new-message');
+                    group.classList.add('new-message'); // 触发出现动画
                     messagesDiv.appendChild(group);
                     scrollToBottom();
                     lastHistoryLength++;
@@ -530,7 +501,6 @@
 
             statusDiv.textContent = successCount === files.length ? '所有附件已发送' : '部分附件发送完成';
             fileInput.value = '';
-            // 不 blur，键盘保持打开
         }
 
         async function deleteMessage(item, retries = 3) {
@@ -595,6 +565,10 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
+            const actionReply = document.getElementById('action-reply');
+            const actionDelete = document.getElementById('action-delete');
+            const actionCopy = document.getElementById('action-copy');
+
             document.getElementById('role-didi').addEventListener('click', () => selectRole('弟弟'));
             document.getElementById('role-gege').addEventListener('click', () => selectRole('哥哥'));
 
@@ -614,14 +588,14 @@
                 actionOverlay.style.display = 'none';
             });
 
-            document.getElementById('action-copy').addEventListener('click', () => {
+            actionCopy.addEventListener('click', () => {
                 if (selectedMessage && selectedMessage.item.type === 'text') {
                     navigator.clipboard.writeText(selectedMessage.item.content);
                 }
                 actionOverlay.click();
             });
 
-            document.getElementById('action-reply').addEventListener('click', () => {
+            actionReply.addEventListener('click', () => {
                 if (selectedMessage) {
                     messageInput.value = `回复 ${selectedMessage.item.role === currentRole ? '自己' : '对方'}: `;
                     messageInput.focus();
@@ -629,7 +603,7 @@
                 actionOverlay.click();
             });
 
-            document.getElementById('action-delete').addEventListener('click', async () => {
+            actionDelete.addEventListener('click', async () => {
                 if (!selectedMessage) return;
 
                 const {item} = selectedMessage;
