@@ -40,7 +40,7 @@
         .message-container.sent {
             margin-left:auto;
             justify-content:flex-end;
-            flex-direction: row-reverse; /* 按钮左，气泡右 */
+            flex-direction: row-reverse;
         }
         .message-container.received {
             margin-right:auto;
@@ -358,40 +358,66 @@
             };
         }
 
-        async function addToHistory(entry) {
-            const getRes = await fetch(HISTORY_API, {headers: {'Authorization': `token ${GITHUB_TOKEN}`}});
-            let history = [], sha = null;
-            if (getRes.ok) {
-                const data = await getRes.json();
-                history = JSON.parse(decodeURIComponent(escape(atob(data.content))));
-                sha = data.sha;
+        // 新增：支持 SHA 冲突重试的 addToHistory（最多重试 3 次）
+        async function addToHistory(entry, retries = 3) {
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const getRes = await fetch(HISTORY_API, {headers: {'Authorization': `token ${GITHUB_TOKEN}`}});
+                    if (!getRes.ok) {
+                        if (getRes.status === 404) {
+                            await createEmptyHistory();
+                            getRes = await fetch(HISTORY_API, {headers: {'Authorization': `token ${GITHUB_TOKEN}`}});
+                            if (!getRes.ok) throw new Error('获取历史失败');
+                        } else {
+                            throw new Error('获取历史失败');
+                        }
+                    }
+
+                    const data = await getRes.json();
+                    let history = [];
+                    if (data.content) {
+                        history = JSON.parse(decodeURIComponent(escape(atob(data.content))));
+                    }
+                    const currentSha = data.sha;
+
+                    const newEntry = {
+                        role: currentRole,
+                        time: new Date().toISOString(),
+                        ...entry
+                    };
+
+                    history.push(newEntry);
+
+                    const putRes = await fetch(HISTORY_API, {
+                        method: 'PUT',
+                        headers: {'Authorization': `token ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github.v3+json'},
+                        body: JSON.stringify({
+                            message: 'new message',
+                            content: btoa(unescape(encodeURIComponent(JSON.stringify(history)))),
+                            sha: currentSha,
+                            branch: BRANCH
+                        })
+                    });
+
+                    if (putRes.ok) {
+                        return newEntry;
+                    }
+
+                    if (putRes.status === 409) {
+                        statusDiv.textContent = '检测到并发，正在重试...';
+                        continue;
+                    }
+
+                    throw new Error('同步失败');
+                } catch (e) {
+                    console.error(e);
+                    if (i === retries - 1) throw e;
+                }
             }
-
-            const newEntry = {
-                role: currentRole,
-                time: new Date().toISOString(),
-                ...entry
-            };
-
-            history.push(newEntry);
-
-            const putRes = await fetch(HISTORY_API, {
-                method: 'PUT',
-                headers: {'Authorization': `token ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github.v3+json'},
-                body: JSON.stringify({
-                    message: 'new message',
-                    content: btoa(unescape(encodeURIComponent(JSON.stringify(history)))),
-                    sha: sha,
-                    branch: BRANCH
-                })
-            });
-
-            if (!putRes.ok) throw new Error('同步失败');
-
-            return newEntry; // 返回新增的完整 entry（包含 time）
+            throw new Error('重试次数用尽');
         }
 
-        // 悲观发送文本：先上传 GitHub 成功后再本地显示
+        // 悲观发送文本
         async function sendMessage() {
             const text = messageInput.value.trim();
             if (!text) return;
@@ -400,12 +426,11 @@
 
             try {
                 const entry = {type: 'text', content: text};
-                const newEntry = await addToHistory(entry); // 先上传
+                const newEntry = await addToHistory(entry);
 
-                // 成功后本地追加
                 messagesDiv.appendChild(createMessageWrapper(newEntry));
                 scrollToBottom();
-                lastHistoryLength++; // 保持与服务器同步，防止轮询重绘
+                lastHistoryLength++;
 
                 messageInput.value = '';
                 statusDiv.textContent = '已发送';
@@ -415,7 +440,7 @@
             }
         }
 
-        // 悲观发送文件：每个文件先上传 + 同步 GitHub 成功后再本地显示
+        // 悲观发送文件
         async function sendFiles() {
             const files = fileInput.files;
             if (files.length === 0) return;
@@ -437,9 +462,8 @@
                         path: uploaded.path
                     };
 
-                    const newEntry = await addToHistory(entry); // 先同步到历史
+                    const newEntry = await addToHistory(entry);
 
-                    // 成功后本地追加
                     messagesDiv.appendChild(createMessageWrapper(newEntry));
                     scrollToBottom();
                     lastHistoryLength++;
@@ -447,8 +471,7 @@
                     successCount++;
                 } catch (e) {
                     console.error(e);
-                    statusDiv.textContent = `${file.name} 上传失败`;
-                    // 继续处理下一个文件
+                    statusDiv.textContent = `${file.name} 发送失败`;
                 }
             }
 
@@ -456,27 +479,50 @@
             fileInput.value = '';
         }
 
-        async function deleteMessage(item) {
-            const getRes = await fetch(HISTORY_API, {headers: {'Authorization': `token ${GITHUB_TOKEN}`}});
-            if (!getRes.ok) return;
-            const data = await getRes.json();
-            let history = JSON.parse(decodeURIComponent(escape(atob(data.content))));
-            const index = history.findIndex(h => h.time === item.time);
-            if (index === -1) return;
-            history.splice(index, 1);
-            await fetch(HISTORY_API, {
-                method: 'PUT',
-                headers: {'Authorization': `token ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github.v3+json'},
-                body: JSON.stringify({
-                    message: 'delete message',
-                    content: btoa(unescape(encodeURIComponent(JSON.stringify(history)))),
-                    sha: data.sha,
-                    branch: BRANCH
-                })
-            });
-            if (item.type !== 'text' && item.path) {
-                await deleteFileFromGitHub(item.path);
+        // 新增：支持 SHA 冲突重试的 deleteMessage（最多重试 3 次）
+        async function deleteMessage(item, retries = 3) {
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const getRes = await fetch(HISTORY_API, {headers: {'Authorization': `token ${GITHUB_TOKEN}`}});
+                    if (!getRes.ok) throw new Error('获取历史失败');
+
+                    const data = await getRes.json();
+                    let history = JSON.parse(decodeURIComponent(escape(atob(data.content))));
+                    const index = history.findIndex(h => h.time === item.time);
+                    if (index === -1) return;
+
+                    history.splice(index, 1);
+
+                    const putRes = await fetch(HISTORY_API, {
+                        method: 'PUT',
+                        headers: {'Authorization': `token ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github.v3+json'},
+                        body: JSON.stringify({
+                            message: 'delete message',
+                            content: btoa(unescape(encodeURIComponent(JSON.stringify(history)))),
+                            sha: data.sha,
+                            branch: BRANCH
+                        })
+                    });
+
+                    if (putRes.ok) {
+                        if (item.type !== 'text' && item.path) {
+                            await deleteFileFromGitHub(item.path);
+                        }
+                        return;
+                    }
+
+                    if (putRes.status === 409) {
+                        statusDiv.textContent = '检测到并发，正在重试删除...';
+                        continue;
+                    }
+
+                    throw new Error('删除同步失败');
+                } catch (e) {
+                    console.error(e);
+                    if (i === retries - 1) throw e;
+                }
             }
+            throw new Error('删除重试次数用尽');
         }
 
         async function deleteFileFromGitHub(path) {
@@ -534,7 +580,6 @@
                 actionOverlay.click();
             });
 
-            // 删除仍是悲观：先删除 GitHub，再刷新列表
             actionDelete.addEventListener('click', async () => {
                 if (!selectedMessage) return;
 
