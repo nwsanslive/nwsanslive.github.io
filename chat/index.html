@@ -38,16 +38,16 @@
             max-width:85%;
             width:fit-content;
         }
-        /* 修复左右对齐，并调整 more-btn 位置以避免右边空块 */
+        /* 左右对齐，并把 sent 的 more-btn 移到左边 */
         .message-container.sent {
             margin-left:auto;
             justify-content:flex-end;
-            flex-direction: row-reverse; /* 反转顺序：more-btn 在左，气泡在右 */
+            flex-direction: row-reverse; /* 反转：按钮左，气泡右 */
         }
         .message-container.received {
             margin-right:auto;
             justify-content:flex-start;
-            flex-direction: row; /* 正常顺序：气泡在左，more-btn 在右 */
+            flex-direction: row; /* 正常：气泡左，按钮右 */
         }
         .message {max-width:100%;}
         .text-bubble {padding:11px 16px;border-radius:20px;}
@@ -126,7 +126,7 @@
 
     <div id="role-selection">
         <h1>Chat</h1>
-        <p>Choose to chat, Chat history will stay in the service.</p>
+        <p>选择你的身份</p>
         <button onclick="selectRole('弟弟')">弟弟</button>
         <button onclick="selectRole('哥哥')">哥哥</button>
     </div>
