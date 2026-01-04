@@ -34,7 +34,7 @@
             display:flex;
             align-items:flex-end;
             gap:10px;
-            max-width: min(85vw, 680px); /* 优化：限制最大宽度，桌面端更舒适 */
+            max-width: min(85vw, 680px);
             width:fit-content;
         }
         .message-container.sent {
@@ -58,7 +58,6 @@
         .file-info {margin-top:8px;font-size:14px;opacity:0.9;}
         .file-link {color:#5ebff9;text-decoration:underline;display:block;margin-top:4px;}
 
-        /* 新增：消息出现动画 */
         @keyframes messageFadeIn {
             from {
                 opacity: 0;
@@ -76,19 +75,19 @@
         #input-area {
             flex-shrink:0;
             display:flex;
-            align-items:center;
-            padding:8px 10px;
+            align-items:flex-end; /* 多行时按钮对齐底部 */
+            padding:12px 10px;
             background:#1e1e1e;
-            padding-bottom:max(8px, env(safe-area-inset-bottom));
+            padding-bottom:max(12px, env(safe-area-inset-bottom));
             gap: clamp(6px, 2vw, 10px);
             max-width: 100%;
         }
         #attach-button,
-        #message-input,
         #send-button {
             height: clamp(36px, 6vw, 48px);
             font-size: clamp(14px, 3.5vw, 18px);
             min-height: 36px;
+            margin-bottom: 4px; /* 细调对齐 */
         }
         #attach-button {
             width: clamp(36px, 6vw, 48px);
@@ -104,12 +103,21 @@
         }
         #message-input {
             flex:1;
-            padding:0 12px;
+            padding:11px 12px; /* 单行时垂直居中 */
             border:none;
             border-radius:18px;
             background:#333333;
             color:#fff;
+            resize: none;
+            overflow: hidden;
+            font-size: clamp(14px, 3.5vw, 18px);
+            line-height: 1.5;
+            min-height: clamp(36px, 6vw, 48px);
+            max-height: 200px;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
         }
+        #message-input::-webkit-scrollbar {display: none;}
         #message-input:focus {outline:none;}
         #send-button {
             padding:0 clamp(16px, 4vw, 24px);
@@ -121,6 +129,7 @@
             font-weight:bold;
             flex-shrink:0;
             white-space: nowrap;
+            align-self: center;
         }
 
         #role-selection {flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;background:#1e1e1e;}
@@ -133,7 +142,6 @@
         #action-sheet button:last-child {border-bottom:none;}
         #action-overlay {display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9998;}
 
-        /* 新增：桌面端增强（大屏幕居中、圆角、阴影、更宽松的内边距） */
         @media (min-width: 900px) {
             #chat-container {
                 max-width: 900px;
@@ -151,7 +159,7 @@
                 padding: 20px 40px;
             }
             #input-area {
-                padding: 12px 20px;
+                padding: 16px 20px;
             }
         }
     </style>
@@ -171,7 +179,7 @@
         <div id="messages"></div>
         <div id="input-area">
             <button id="attach-button" title="添加附件">+</button>
-            <input type="text" id="message-input" placeholder="输入消息...">
+            <textarea id="message-input" placeholder="输入消息..." rows="1"></textarea>
             <button id="send-button">发送</button>
             <input type="file" id="file-input" accept="*/*" multiple>
         </div>
@@ -219,6 +227,12 @@
         if (!GITHUB_TOKEN || !GITHUB_TOKEN.startsWith('ghp_')) {
             document.body.innerHTML = `<div style="padding:50px;text-align:center;color:#fff;"><h2>缺少 Token</h2><p>请使用带 ?token= 的链接访问</p></div>`;
             throw new Error("No token");
+        }
+
+        // 新增：自动调整 textarea 高度
+        function autoResize() {
+            messageInput.style.height = 'auto';
+            messageInput.style.height = `${messageInput.scrollHeight}px`;
         }
 
         function openFullscreen(url) {
@@ -273,7 +287,7 @@
             if (item.type === 'text') {
                 const bubble = document.createElement('div');
                 bubble.className = 'text-bubble';
-                bubble.textContent = item.content || '';
+                bubble.innerHTML = item.content.replace(/\n/g, '<br>');
                 messageDiv.appendChild(bubble);
             } else if (item.type === 'image') {
                 const img = document.createElement('img');
@@ -474,6 +488,7 @@
                 lastHistoryLength++;
 
                 messageInput.value = '';
+                autoResize(); // 重置高度
                 statusDiv.textContent = '已发送';
             } catch (e) {
                 console.error(e);
@@ -587,18 +602,31 @@
             const actionDelete = document.getElementById('action-delete');
             const actionCopy = document.getElementById('action-copy');
 
+            // 自动调整高度（初始 + 输入时）
+            autoResize();
+            messageInput.addEventListener('input', autoResize);
+
             document.getElementById('role-didi').addEventListener('click', () => selectRole('弟弟'));
             document.getElementById('role-gege').addEventListener('click', () => selectRole('哥哥'));
 
             sendButton.addEventListener('click', sendMessage);
             attachButton.addEventListener('click', () => fileInput.click());
             fileInput.addEventListener('change', sendFiles);
+
+            // 关键修改：键盘行为
             messageInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    sendMessage();
+                if (e.key === 'Enter') {
+                    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                    // 电脑端：单按 Enter 发送，Ctrl+Enter 换行
+                    // 手机端：软键盘回车键直接换行（不发送）
+                    if (!isMobile && !e.ctrlKey) {
+                        e.preventDefault();
+                        sendMessage();
+                    }
+                    // 否则（手机或 Ctrl+Enter）允许默认换行行为
                 }
             });
+
             messageInput.addEventListener('focus', () => setTimeout(scrollToBottom, 400));
 
             actionOverlay.addEventListener('click', () => {
@@ -617,6 +645,7 @@
                 if (selectedMessage) {
                     messageInput.value = `回复 ${selectedMessage.item.role === currentRole ? '自己' : '对方'}: `;
                     messageInput.focus();
+                    autoResize();
                 }
                 actionOverlay.click();
             });
