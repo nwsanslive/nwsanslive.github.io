@@ -31,7 +31,7 @@
         .file-info {margin-top:8px;font-size:14px;opacity:0.9;}
         .file-link {color:#5ebff9;text-decoration:underline;display:block;margin-top:4px;}
 
-        /* 消息动画升级：带轻微弹出效果 */
+        /* 消息动画升级 */
         @keyframes messageFadeIn {
             0% {opacity:0;transform:translateY(30px) scale(0.9);}
             70% {opacity:1;transform:translateY(0) scale(1.03);}
@@ -39,19 +39,13 @@
         }
         .message-group.new-message {animation: messageFadeIn 0.5s ease-out forwards;}
 
-        /* 输入区 */
+        /* 输入区：多行输入 + 发送按钮优化 */
         #input-area {
             flex-direction:column;
             flex-shrink:0;
             padding:8px 10px;
             background:#1e1e1e;
             padding-bottom:max(8px, env(safe-area-inset-bottom));
-        }
-        .input-row {
-            display:flex;
-            align-items:flex-end;
-            width:100%;
-            gap:clamp(6px,2vw,10px);
         }
         #reply-preview {
             display:none;
@@ -74,9 +68,14 @@
             font-size:24px;
             cursor:pointer;
         }
-        #attach-button, #send-button {
+        .input-row {
+            display:flex;
+            align-items:flex-end;
+            width:100%;
+            gap:clamp(6px,2vw,10px);
+        }
+        #attach-button {
             height:clamp(36px,6vw,48px);
-            min-height:36px;
             width:clamp(36px,6vw,48px);
             border-radius:50%;
             background:#26b460;
@@ -88,12 +87,6 @@
             justify-content:center;
             flex-shrink:0;
             font-size:20px;
-        }
-        #send-button {
-            border-radius:12px;
-            padding:0 clamp(16px,4vw,24px);
-            font-weight:bold;
-            font-size:clamp(14px,3.5vw,18px);
         }
         #message-input {
             flex:1;
@@ -111,6 +104,23 @@
         }
         #message-input:focus {outline:none;}
         #message-input::-webkit-scrollbar {display:none;}
+        #send-button {
+            min-width:72px; /* 确保足够宽，“发送”二字不挤压 */
+            padding:0 20px;
+            height:clamp(36px,6vw,48px);
+            background:#26b460;
+            color:#fff;
+            border:none;
+            border-radius:18px; /* 与输入框圆角一致，更协调 */
+            cursor:pointer;
+            font-weight:bold;
+            font-size:clamp(14px,3.5vw,18px);
+            flex-shrink:0;
+            white-space:nowrap;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+        }
 
         #role-selection {flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;background:#1e1e1e;}
         #role-selection button {margin:15px;padding:14px 32px;font-size:18px;background:#26b460;color:#fff;border:none;border-radius:12px;cursor:pointer;}
@@ -221,7 +231,7 @@
         }
 
         fullscreenOverlay.addEventListener('click', closeFullscreen);
-        fullscreenImg.addEventListener('click', (e) => e.stopPropagation());
+        fullscreenImg.addEventListener('click', closeFullscreen);
 
         function formatTime(dateStr) {
             const d = new Date(dateStr);
@@ -259,7 +269,6 @@
             const messageDiv = document.createElement('div');
             messageDiv.className = 'message';
 
-            // 引用条
             if (item.replyContent) {
                 const quote = document.createElement('div');
                 quote.className = 'quote-bar';
@@ -336,7 +345,6 @@
                 const data = await res.json();
                 history = JSON.parse(decodeURIComponent(escape(atob(data.content))));
 
-                // 浏览器通知
                 const hasNew = history.length > lastHistoryLength;
                 if (hasNew && document.hidden && Notification.permission === 'granted') {
                     const lastMsg = history[history.length - 1];
@@ -577,14 +585,11 @@
             attachButton.addEventListener('click', () => fileInput.click());
             fileInput.addEventListener('change', sendFiles);
 
-            // 键盘行为
+            // 键盘行为：Enter 发送（标准方式），支持多行换行
             messageInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
-                    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-                    if (!isMobile && !e.ctrlKey) {
-                        e.preventDefault();
-                        sendMessage();
-                    }
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
                 }
             });
 
