@@ -11,87 +11,76 @@
         .status {text-align:center;padding:6px;font-size:13px;color:#aaa;flex-shrink:0;}
         #messages {flex:1 1 auto;overflow-y:auto;padding:15px;display:flex;flex-direction:column;gap:20px;-webkit-overflow-scrolling:touch;min-height:0;scroll-behavior:smooth;}
 
-        .message-group {
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        .timestamp {
-            font-size:12px;
-            color:#888;
-            margin-bottom:8px;
-            padding: 4px 12px;
-            background: rgba(50,50,50,0.5);
-            border-radius: 12px;
-        }
-        .message-wrapper {
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-        }
-        .message-container {
-            display:flex;
-            align-items:flex-end;
-            gap:10px;
-            max-width: min(85vw, 680px);
-            width:fit-content;
-        }
-        .message-container.sent {
-            margin-left:auto;
-            justify-content:flex-end;
-            flex-direction: row-reverse;
-        }
-        .message-container.received {
-            margin-right:auto;
-            justify-content:flex-start;
-            flex-direction: row;
-        }
+        .message-group {width: 100%;display: flex;flex-direction: column;align-items: center;}
+        .timestamp {font-size:12px;color:#888;margin-bottom:8px;padding: 4px 12px;background: rgba(50,50,50,0.5);border-radius: 12px;}
+        .message-wrapper {width: 100%;display: flex;flex-direction: column;}
+        .message-container {display:flex;align-items:flex-end;gap:10px;max-width: min(85vw, 680px);width:fit-content;}
+        .message-container.sent {margin-left:auto;justify-content:flex-end;flex-direction: row-reverse;}
+        .message-container.received {margin-right:auto;justify-content:flex-start;flex-direction: row;}
         .message {max-width:100%;}
-        .text-bubble {padding:11px 16px;border-radius:20px;word-break:break-word;}
+        .text-bubble {padding:11px 16px;border-radius:20px;word-break:break-word;position:relative;padding-bottom:24px;}
         .sent .text-bubble {background:#26b460;color:#ffffff;}
         .received .text-bubble {background:#2c2c2c;color:#e0e0e0;}
-        .media-img, .media-video {max-width:100%;height:auto;border-radius:12px;display:block;cursor:pointer;}
-        .media-video {background:#000;}
+        .tick {position:absolute;bottom:6px;right:12px;font-size:13px;color:rgba(255,255,255,0.7);pointer-events:none;}
+        .quote-bar {padding:8px 12px;background:rgba(0,0,0,0.3);border-left:4px solid #888;border-radius:8px;margin-bottom:8px;font-size:14px;color:#ccc;}
+        .sent .quote-bar {border-left-color:#26b460;background:rgba(255,255,255,0.1);}
+        .quote-role {font-weight:bold;}
+        .media-img, .media-video, .media-audio {max-width:100%;height:auto;border-radius:12px;display:block;cursor:pointer;}
+        .media-video, .media-audio {background:#000;max-width:320px;}
         .more-btn {width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;font-size:20px;opacity:0;transition:opacity 0.2s;cursor:pointer;flex-shrink:0;}
         .message-container:hover .more-btn {opacity:1;}
         .file-info {margin-top:8px;font-size:14px;opacity:0.9;}
         .file-link {color:#5ebff9;text-decoration:underline;display:block;margin-top:4px;}
 
+        /* 消息动画升级：带轻微弹出效果 */
         @keyframes messageFadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            0% {opacity:0;transform:translateY(30px) scale(0.9);}
+            70% {opacity:1;transform:translateY(0) scale(1.03);}
+            100% {opacity:1;transform:translateY(0) scale(1);}
         }
-        .message-group.new-message {
-            animation: messageFadeIn 0.4s ease-out forwards;
-        }
+        .message-group.new-message {animation: messageFadeIn 0.5s ease-out forwards;}
 
+        /* 输入区布局调整 */
         #input-area {
+            flex-direction:column;
             flex-shrink:0;
-            display:flex;
-            align-items:flex-end; /* 多行时按钮对齐底部 */
-            padding:12px 10px;
+            padding:8px 10px;
             background:#1e1e1e;
-            padding-bottom:max(12px, env(safe-area-inset-bottom));
-            gap: clamp(6px, 2vw, 10px);
-            max-width: 100%;
+            padding-bottom:max(8px, env(safe-area-inset-bottom));
+            position:relative;
         }
-        #attach-button,
-        #send-button {
-            height: clamp(36px, 6vw, 48px);
-            font-size: clamp(14px, 3.5vw, 18px);
-            min-height: 36px;
-            margin-bottom: 4px; /* 细调对齐 */
+        .input-row {
+            display:flex;
+            align-items:flex-end;
+            width:100%;
+            gap:clamp(6px,2vw,10px);
         }
-        #attach-button {
-            width: clamp(36px, 6vw, 48px);
-            border-radius: 50%;
+        #reply-preview {
+            display:none;
+            width:100%;
+            padding:10px 12px;
+            background:#2c2c2c;
+            border-radius:12px;
+            margin-bottom:8px;
+            position:relative;
+            font-size:14px;
+            color:#ccc;
+        }
+        #cancel-reply {
+            position:absolute;
+            top:4px;
+            right:8px;
+            background:none;
+            border:none;
+            color:#aaa;
+            font-size:24px;
+            cursor:pointer;
+        }
+        #attach-button, #emoji-button, #voice-button, #send-button {
+            height:clamp(36px,6vw,48px);
+            min-height:36px;
+            width:clamp(36px,6vw,48px);
+            border-radius:50%;
             background:#26b460;
             color:#fff;
             border:none;
@@ -100,67 +89,72 @@
             align-items:center;
             justify-content:center;
             flex-shrink:0;
+            font-size:20px;
+        }
+        #send-button {
+            border-radius:12px;
+            padding:0 clamp(16px,4vw,24px);
+            font-weight:bold;
+            font-size:clamp(14px,3.5vw,18px);
         }
         #message-input {
             flex:1;
-            padding:11px 12px; /* 单行时垂直居中 */
+            padding:11px 12px;
             border:none;
             border-radius:18px;
             background:#333333;
             color:#fff;
-            resize: none;
-            overflow: hidden;
-            font-size: clamp(14px, 3.5vw, 18px);
-            line-height: 1.5;
-            min-height: clamp(36px, 6vw, 48px);
-            max-height: 200px;
-            scrollbar-width: none;
-            -ms-overflow-style: none;
+            resize:none;
+            overflow:hidden;
+            font-size:clamp(14px,3.5vw,18px);
+            line-height:1.5;
+            min-height:clamp(36px,6vw,48px);
+            max-height:200px;
         }
-        #message-input::-webkit-scrollbar {display: none;}
         #message-input:focus {outline:none;}
-        #send-button {
-            padding:0 clamp(16px, 4vw, 24px);
-            background:#26b460;
-            color:#fff;
-            border:none;
-            border-radius:10px;
-            cursor:pointer;
-            font-weight:bold;
-            flex-shrink:0;
-            white-space: nowrap;
-            align-self: center;
+        #message-input::-webkit-scrollbar {display:none;}
+
+        /* 表情面板 */
+        #emoji-picker {
+            display:none;
+            position:absolute;
+            bottom:calc(100% + 8px);
+            left:10px;
+            right:10px;
+            background:#1e1e1e;
+            border-radius:12px;
+            padding:12px;
+            box-shadow:0 -8px 30px rgba(0,0,0,0.6);
+            max-height:250px;
+            overflow-y:auto;
+            grid-template-columns:repeat(8,1fr);
+            gap:8px;
+            z-index:100;
         }
+        .emoji {
+            font-size:28px;
+            text-align:center;
+            cursor:pointer;
+            padding:4px;
+            border-radius:8px;
+        }
+        .emoji:hover {background:#333;}
 
         #role-selection {flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;background:#1e1e1e;}
         #role-selection button {margin:15px;padding:14px 32px;font-size:18px;background:#26b460;color:#fff;border:none;border-radius:12px;cursor:pointer;}
         #file-input {display:none;}
         #fullscreen-overlay {display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.95);align-items:center;justify-content:center;z-index:9999;cursor:pointer;}
-        #fullscreen-img {max-width:95%;max-height:95%;cursor:pointer;}
+        #fullscreen-img {max-width:95%;max-height:95%;border-radius:8px;cursor:pointer;}
         #action-sheet {display:none;position:fixed;bottom:0;left:0;right:0;background:#1e1e1e;border-top-left-radius:16px;border-top-right-radius:16px;padding:20px 0;z-index:10000;flex-direction:column;}
         #action-sheet button {padding:16px 24px;font-size:17px;background:transparent;color:#e0e0e0;border:none;text-align:left;margin:0 20px;border-bottom:1px solid #333;}
         #action-sheet button:last-child {border-bottom:none;}
         #action-overlay {display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9998;}
 
         @media (min-width: 900px) {
-            #chat-container {
-                max-width: 900px;
-                margin: 20px auto;
-                border-radius: 12px;
-                overflow: hidden;
-                box-shadow: 0 4px 30px rgba(0,0,0,0.6);
-                height: calc(100dvh - 40px);
-            }
-            body {
-                background: #0a0a0a;
-                padding: 0;
-            }
-            #messages {
-                padding: 20px 40px;
-            }
-            #input-area {
-                padding: 16px 20px;
-            }
+            #chat-container {max-width:900px;margin:20px auto;border-radius:12px;overflow:hidden;box-shadow:0 4px 30px rgba(0,0,0,0.6);height:calc(100dvh - 40px);}
+            body {background:#0a0a0a;}
+            #messages {padding:20px 40px;}
+            #input-area {padding:12px 20px;}
         }
     </style>
 </head>
@@ -178,11 +172,20 @@
         <div class="status" id="status">正在加载...</div>
         <div id="messages"></div>
         <div id="input-area">
-            <button id="attach-button" title="添加附件">+</button>
-            <textarea id="message-input" placeholder="输入消息..." rows="1"></textarea>
-            <button id="send-button">发送</button>
+            <div id="reply-preview">
+                <div id="reply-content"></div>
+                <button id="cancel-reply">×</button>
+            </div>
+            <div class="input-row">
+                <button id="attach-button" title="附件">+</button>
+                <button id="emoji-button">😊</button>
+                <button id="voice-button">🎤</button>
+                <textarea id="message-input" placeholder="输入消息..." rows="1"></textarea>
+                <button id="send-button">发送</button>
+            </div>
             <input type="file" id="file-input" accept="*/*" multiple>
         </div>
+        <div id="emoji-picker"></div>
     </div>
 
     <div id="fullscreen-overlay">
@@ -209,7 +212,10 @@
         let currentRole = null;
         let lastTime = null;
         let selectedMessage = null;
+        let replyTo = null;
         let lastHistoryLength = 0;
+        let mediaRecorder = null;
+        let audioChunks = [];
 
         const messagesDiv = document.getElementById('messages');
         const chatContainer = document.getElementById('chat-container');
@@ -217,19 +223,27 @@
         const messageInput = document.getElementById('message-input');
         const sendButton = document.getElementById('send-button');
         const attachButton = document.getElementById('attach-button');
+        const emojiButton = document.getElementById('emoji-button');
+        const voiceButton = document.getElementById('voice-button');
+        const emojiPicker = document.getElementById('emoji-picker');
         const fileInput = document.getElementById('file-input');
         const statusDiv = document.getElementById('status');
         const fullscreenOverlay = document.getElementById('fullscreen-overlay');
         const fullscreenImg = document.getElementById('fullscreen-img');
         const actionOverlay = document.getElementById('action-overlay');
         const actionSheet = document.getElementById('action-sheet');
+        const replyPreview = document.getElementById('reply-preview');
+        const replyContent = document.getElementById('reply-content');
+        const cancelReply = document.getElementById('cancel-reply');
 
         if (!GITHUB_TOKEN || !GITHUB_TOKEN.startsWith('ghp_')) {
             document.body.innerHTML = `<div style="padding:50px;text-align:center;color:#fff;"><h2>缺少 Token</h2><p>请使用带 ?token= 的链接访问</p></div>`;
             throw new Error("No token");
         }
 
-        // 新增：自动调整 textarea 高度
+        // 常用表情列表
+        const emojis = ['😀','😃','😄','😁','😆','😅','😂','🤣','🥲','😊','😇','🙂','🙃','😉','😌','😍','🥰','😘','😗','😙','😚','😋','😛','😝','😜','🤪','🤨','🧐','🤓','😎','🥸','🤩','🥳','😏','😒','😞','😔','😟','😕','🙁','☹️','😣','😖','😫','😩','🥺','😢','😭','😤','😠','😡','🤬','🤯','😳','🥵','🥶','😱','😨','😰','😥','😓','🤗','🤔','🤭','🤫','🤥','😶','😬','🙄','😯','😦','😧','😮','😲','🥱','😴','🤤','😪','😵','🤐','🥴','🤢','🤮','🤧','😷','🤒','🤕','🤑','🤠','😈','👿','👹','👺','🤡','💩','👻','💀','☠️','👽','👾','🤖','🎃','😺','😸','😹','😻','😼','😽','🙀','😿','😾','👍','👎','👌','🤌','🤏','✌️','🤞','🤟','🤲','👋','🤚','🖐️','✋','🖖','👋','💪','🦾','🫶','❤️','💛','💚','💙','💜','🖤','🤍','💔','❣️','💕','💞','💓','💗','💖','💘','💝','🏃','💃','🕺','👯','🏠','🌃','🌠','🎆','🎇','✨','🌟','💫'];
+
         function autoResize() {
             messageInput.style.height = 'auto';
             messageInput.style.height = `${messageInput.scrollHeight}px`;
@@ -246,7 +260,7 @@
         }
 
         fullscreenOverlay.addEventListener('click', closeFullscreen);
-        fullscreenImg.addEventListener('click', closeFullscreen);
+        fullscreenImg.addEventListener('click', (e) => e.stopPropagation());
 
         function formatTime(dateStr) {
             const d = new Date(dateStr);
@@ -263,7 +277,7 @@
             return diff > 5;
         }
 
-        function createMessageWrapper(item) {
+        function createMessageWrapper(item, isSeen = false) {
             const group = document.createElement('div');
             group.className = 'message-group';
 
@@ -284,10 +298,25 @@
             const messageDiv = document.createElement('div');
             messageDiv.className = 'message';
 
+            // 引用条
+            if (item.replyContent) {
+                const quote = document.createElement('div');
+                quote.className = 'quote-bar';
+                quote.innerHTML = `<span class="quote-role">${item.replyRole}:</span> ${item.replyContent.replace(/\n/g, '<br>')}`;
+                messageDiv.appendChild(quote);
+            }
+
+            // 内容
             if (item.type === 'text') {
                 const bubble = document.createElement('div');
                 bubble.className = 'text-bubble';
                 bubble.innerHTML = item.content.replace(/\n/g, '<br>');
+                if (item.role === currentRole) {
+                    const tick = document.createElement('div');
+                    tick.className = 'tick';
+                    tick.textContent = isSeen ? '✓✓' : '✓';
+                    bubble.appendChild(tick);
+                }
                 messageDiv.appendChild(bubble);
             } else if (item.type === 'image') {
                 const img = document.createElement('img');
@@ -301,11 +330,17 @@
                 video.controls = true;
                 video.className = 'media-video';
                 messageDiv.appendChild(video);
+            } else if (item.type === 'audio') {
+                const audio = document.createElement('audio');
+                audio.src = item.url;
+                audio.controls = true;
+                audio.className = 'media-audio';
+                messageDiv.appendChild(audio);
             } else {
                 const bubble = document.createElement('div');
                 bubble.className = 'text-bubble';
                 const nameDiv = document.createElement('div');
-                nameDiv.textContent = item.filename;
+                nameDiv.textContent = item.filename || '文件';
                 nameDiv.className = 'file-info';
                 bubble.appendChild(nameDiv);
                 const a = document.createElement('a');
@@ -329,17 +364,13 @@
 
             container.appendChild(messageDiv);
             container.appendChild(moreBtn);
-
             wrapper.appendChild(container);
             group.appendChild(wrapper);
             return group;
         }
 
         function scrollToBottom() {
-            messagesDiv.scrollTo({
-                top: messagesDiv.scrollHeight,
-                behavior: 'smooth'
-            });
+            messagesDiv.scrollTo({top: messagesDiv.scrollHeight, behavior: 'smooth'});
         }
 
         async function loadMessages(isInitial = false) {
@@ -357,11 +388,21 @@
                 const data = await res.json();
                 history = JSON.parse(decodeURIComponent(escape(atob(data.content))));
 
+                const hasNew = history.length > lastHistoryLength;
+                if (hasNew && document.hidden && Notification.permission === 'granted') {
+                    const lastMsg = history[history.length - 1];
+                    if (lastMsg.role !== currentRole) {
+                        const body = lastMsg.type === 'text' ? lastMsg.content.slice(0, 50) + '...' : '[媒体消息]';
+                        new Notification(`新消息 - ${lastMsg.role}`, {body});
+                    }
+                }
+
                 if (history.length !== lastHistoryLength || isInitial) {
                     messagesDiv.innerHTML = '';
                     lastTime = null;
-                    history.forEach((item) => {
-                        const group = createMessageWrapper(item);
+                    history.forEach((item, index) => {
+                        const isSeen = item.role === currentRole && index < history.length - 1;
+                        const group = createMessageWrapper(item, isSeen);
                         messagesDiv.appendChild(group);
                     });
                     scrollToBottom();
@@ -420,18 +461,13 @@
                     if (!getRes.ok) {
                         if (getRes.status === 404) {
                             await createEmptyHistory();
-                            getRes = await fetch(HISTORY_API, {headers: {'Authorization': `token ${GITHUB_TOKEN}`}});
-                            if (!getRes.ok) throw new Error('获取历史失败');
                         } else {
                             throw new Error('获取历史失败');
                         }
                     }
 
                     const data = await getRes.json();
-                    let history = [];
-                    if (data.content) {
-                        history = JSON.parse(decodeURIComponent(escape(atob(data.content))));
-                    }
+                    let history = data.content ? JSON.parse(decodeURIComponent(escape(atob(data.content)))) : [];
                     const currentSha = data.sha;
 
                     const newEntry = {
@@ -453,22 +489,13 @@
                         })
                     });
 
-                    if (putRes.ok) {
-                        return newEntry;
-                    }
-
-                    if (putRes.status === 409) {
-                        statusDiv.textContent = '检测到并发，正在重试...';
-                        continue;
-                    }
-
+                    if (putRes.ok) return newEntry;
+                    if (putRes.status === 409) continue;
                     throw new Error('同步失败');
                 } catch (e) {
-                    console.error(e);
                     if (i === retries - 1) throw e;
                 }
             }
-            throw new Error('重试次数用尽');
         }
 
         async function sendMessage() {
@@ -479,20 +506,26 @@
 
             try {
                 const entry = {type: 'text', content: text};
+                if (replyTo) {
+                    entry.replyRole = replyTo.role;
+                    entry.replyContent = replyTo.type === 'text' ? replyTo.content.slice(0, 120) : '[媒体消息]';
+                }
+
                 const newEntry = await addToHistory(entry);
 
-                const group = createMessageWrapper(newEntry);
+                const group = createMessageWrapper(newEntry, false);
                 group.classList.add('new-message');
                 messagesDiv.appendChild(group);
                 scrollToBottom();
                 lastHistoryLength++;
 
                 messageInput.value = '';
-                autoResize(); // 重置高度
+                autoResize();
+                replyTo = null;
+                replyPreview.style.display = 'none';
                 statusDiv.textContent = '已发送';
             } catch (e) {
-                console.error(e);
-                statusDiv.textContent = '发送失败，请重试';
+                statusDiv.textContent = '发送失败';
             }
         }
 
@@ -501,42 +534,94 @@
             if (files.length === 0) return;
 
             let successCount = 0;
-
             for (let file of files) {
                 statusDiv.textContent = `正在上传 ${file.name}...`;
-
                 try {
                     const uploaded = await uploadFile(file);
                     const type = file.type.startsWith('image/') ? 'image' :
-                                 file.type.startsWith('video/') ? 'video' : 'file';
+                                 file.type.startsWith('video/') ? 'video' :
+                                 file.type.startsWith('audio/') ? 'audio' : 'file';
 
                     const entry = {
-                        type: type,
+                        type,
                         filename: uploaded.filename,
                         url: uploaded.url,
                         path: uploaded.path
                     };
+                    if (replyTo) {
+                        entry.replyRole = replyTo.role;
+                        entry.replyContent = '[媒体消息]';
+                    }
 
                     const newEntry = await addToHistory(entry);
 
-                    const group = createMessageWrapper(newEntry);
+                    const group = createMessageWrapper(newEntry, false);
                     group.classList.add('new-message');
                     messagesDiv.appendChild(group);
                     scrollToBottom();
                     lastHistoryLength++;
-
                     successCount++;
                 } catch (e) {
-                    console.error(e);
-                    statusDiv.textContent = `${file.name} 发送失败`;
+                    statusDiv.textContent = `${file.name} 失败`;
                 }
             }
-
-            statusDiv.textContent = successCount === files.length ? '所有附件已发送' : '部分附件发送完成';
+            statusDiv.textContent = successCount === files.length ? '所有附件已发送' : '部分发送完成';
             fileInput.value = '';
+            replyTo = null;
+            replyPreview.style.display = 'none';
+        }
+
+        // 语音录音
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({audio: true});
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+                mediaRecorder.onstop = async () => {
+                    const blob = new Blob(audioChunks, {type: 'audio/webm'});
+                    const file = new File([blob], 'voice.webm', {type: 'audio/webm'});
+                    statusDiv.textContent = '正在上传语音...';
+                    try {
+                        const uploaded = await uploadFile(file);
+                        const entry = {
+                            type: 'audio',
+                            filename: '语音消息',
+                            url: uploaded.url,
+                            path: uploaded.path
+                        };
+                        if (replyTo) {
+                            entry.replyRole = replyTo.role;
+                            entry.replyContent = '[语音消息]';
+                        }
+                        const newEntry = await addToHistory(entry);
+                        const group = createMessageWrapper(newEntry, false);
+                        group.classList.add('new-message');
+                        messagesDiv.appendChild(group);
+                        scrollToBottom();
+                        lastHistoryLength++;
+                        replyTo = null;
+                        replyPreview.style.display = 'none';
+                    } catch (e) {
+                        statusDiv.textContent = '语音发送失败';
+                    }
+                    stream.getTracks().forEach(track => track.stop());
+                };
+                mediaRecorder.start();
+                statusDiv.textContent = '正在录音... 松开发送';
+            } catch (e) {
+                statusDiv.textContent = '麦克风权限被拒绝';
+            }
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+            }
         }
 
         async function deleteMessage(item, retries = 3) {
+            // ... (保持原删除逻辑不变)
             for (let i = 0; i < retries; i++) {
                 try {
                     const getRes = await fetch(HISTORY_API, {headers: {'Authorization': `token ${GITHUB_TOKEN}`}});
@@ -561,24 +646,15 @@
                     });
 
                     if (putRes.ok) {
-                        if (item.type !== 'text' && item.path) {
-                            await deleteFileFromGitHub(item.path);
-                        }
+                        if (item.type !== 'text' && item.path) await deleteFileFromGitHub(item.path);
                         return;
                     }
-
-                    if (putRes.status === 409) {
-                        statusDiv.textContent = '检测到并发，正在重试删除...';
-                        continue;
-                    }
-
-                    throw new Error('删除同步失败');
+                    if (putRes.status === 409) continue;
+                    throw new Error('删除失败');
                 } catch (e) {
-                    console.error(e);
                     if (i === retries - 1) throw e;
                 }
             }
-            throw new Error('删除重试次数用尽');
         }
 
         async function deleteFileFromGitHub(path) {
@@ -589,20 +665,26 @@
             await fetch(deleteUrl, {
                 method: 'DELETE',
                 headers: {'Authorization': `token ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github.v3+json'},
-                body: JSON.stringify({
-                    message: 'delete file',
-                    sha: data.sha,
-                    branch: BRANCH
-                })
+                body: JSON.stringify({message: 'delete file', sha: data.sha, branch: BRANCH})
             });
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-            const actionReply = document.getElementById('action-reply');
-            const actionDelete = document.getElementById('action-delete');
-            const actionCopy = document.getElementById('action-copy');
+            // 动态生成表情
+            emojis.forEach(emoji => {
+                const span = document.createElement('span');
+                span.className = 'emoji';
+                span.textContent = emoji;
+                span.addEventListener('click', () => {
+                    messageInput.value += emoji;
+                    autoResize();
+                    messageInput.focus();
+                    emojiPicker.style.display = 'none';
+                });
+                emojiPicker.appendChild(span);
+            });
 
-            // 自动调整高度（初始 + 输入时）
+            // 事件绑定
             autoResize();
             messageInput.addEventListener('input', autoResize);
 
@@ -612,66 +694,71 @@
             sendButton.addEventListener('click', sendMessage);
             attachButton.addEventListener('click', () => fileInput.click());
             fileInput.addEventListener('change', sendFiles);
+            emojiButton.addEventListener('click', () => {
+                emojiPicker.style.display = emojiPicker.style.display === 'grid' ? 'none' : 'grid';
+            });
 
-            // 关键修改：键盘行为
+            // 语音长按
+            voiceButton.addEventListener('mousedown', startRecording);
+            voiceButton.addEventListener('touchstart', (e) => {e.preventDefault(); startRecording();});
+            document.addEventListener('mouseup', stopRecording);
+            document.addEventListener('touchend', stopRecording);
+
+            // 键盘行为（手机换行，电脑Enter发送/Ctrl+Enter换行）
             messageInput.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
                     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-                    // 电脑端：单按 Enter 发送，Ctrl+Enter 换行
-                    // 手机端：软键盘回车键直接换行（不发送）
                     if (!isMobile && !e.ctrlKey) {
                         e.preventDefault();
                         sendMessage();
                     }
-                    // 否则（手机或 Ctrl+Enter）允许默认换行行为
                 }
             });
 
             messageInput.addEventListener('focus', () => setTimeout(scrollToBottom, 400));
 
+            // 操作表
             actionOverlay.addEventListener('click', () => {
                 actionSheet.style.display = 'none';
                 actionOverlay.style.display = 'none';
             });
 
-            actionCopy.addEventListener('click', () => {
+            document.getElementById('action-copy').addEventListener('click', () => {
                 if (selectedMessage && selectedMessage.item.type === 'text') {
                     navigator.clipboard.writeText(selectedMessage.item.content);
                 }
                 actionOverlay.click();
             });
 
-            actionReply.addEventListener('click', () => {
+            document.getElementById('action-reply').addEventListener('click', () => {
                 if (selectedMessage) {
-                    messageInput.value = `回复 ${selectedMessage.item.role === currentRole ? '自己' : '对方'}: `;
+                    replyTo = selectedMessage.item;
+                    replyPreview.style.display = 'block';
+                    replyContent.innerHTML = `<strong>${replyTo.role}:</strong> ${replyTo.type === 'text' ? replyTo.content.replace(/\n/g, '<br>') : '[媒体消息]'}`;
                     messageInput.focus();
-                    autoResize();
                 }
                 actionOverlay.click();
             });
 
-            actionDelete.addEventListener('click', async () => {
-                if (!selectedMessage) return;
+            cancelReply.addEventListener('click', () => {
+                replyTo = null;
+                replyPreview.style.display = 'none';
+            });
 
-                const {item} = selectedMessage;
-
-                if (item.role !== currentRole) {
+            document.getElementById('action-delete').addEventListener('click', async () => {
+                if (!selectedMessage || selectedMessage.item.role !== currentRole) {
                     actionOverlay.click();
                     return;
                 }
-
                 statusDiv.textContent = '正在删除...';
-
                 try {
-                    await deleteMessage(item);
+                    await deleteMessage(selectedMessage.item);
                     await loadMessages(true);
                     statusDiv.textContent = '已删除';
                 } catch (e) {
-                    console.error('删除失败', e);
+                    statusDiv.textContent = '删除失败';
                     await loadMessages(true);
-                    statusDiv.textContent = '删除失败，请重试';
                 }
-
                 actionOverlay.click();
                 selectedMessage = null;
             });
@@ -681,6 +768,9 @@
             currentRole = role;
             roleSelection.style.display = 'none';
             chatContainer.style.display = 'flex';
+            if ('Notification' in window && Notification.permission === 'default') {
+                Notification.requestPermission();
+            }
             loadMessages(true);
         }
 
