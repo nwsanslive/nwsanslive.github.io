@@ -34,7 +34,7 @@
             display:flex;
             align-items:flex-end;
             gap:10px;
-            max-width:85%;
+            max-width: min(85vw, 680px); /* 优化：限制最大宽度，桌面端更舒适 */
             width:fit-content;
         }
         .message-container.sent {
@@ -48,7 +48,7 @@
             flex-direction: row;
         }
         .message {max-width:100%;}
-        .text-bubble {padding:11px 16px;border-radius:20px;}
+        .text-bubble {padding:11px 16px;border-radius:20px;word-break:break-word;}
         .sent .text-bubble {background:#26b460;color:#ffffff;}
         .received .text-bubble {background:#2c2c2c;color:#e0e0e0;}
         .media-img, .media-video {max-width:100%;height:auto;border-radius:12px;display:block;cursor:pointer;}
@@ -132,6 +132,28 @@
         #action-sheet button {padding:16px 24px;font-size:17px;background:transparent;color:#e0e0e0;border:none;text-align:left;margin:0 20px;border-bottom:1px solid #333;}
         #action-sheet button:last-child {border-bottom:none;}
         #action-overlay {display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9998;}
+
+        /* 新增：桌面端增强（大屏幕居中、圆角、阴影、更宽松的内边距） */
+        @media (min-width: 900px) {
+            #chat-container {
+                max-width: 900px;
+                margin: 20px auto;
+                border-radius: 12px;
+                overflow: hidden;
+                box-shadow: 0 4px 30px rgba(0,0,0,0.6);
+                height: calc(100dvh - 40px);
+            }
+            body {
+                background: #0a0a0a;
+                padding: 0;
+            }
+            #messages {
+                padding: 20px 40px;
+            }
+            #input-area {
+                padding: 12px 20px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -299,7 +321,6 @@
             return group;
         }
 
-        // 修改：平滑滚动到底部
         function scrollToBottom() {
             messagesDiv.scrollTo({
                 top: messagesDiv.scrollHeight,
@@ -327,7 +348,6 @@
                     lastTime = null;
                     history.forEach((item) => {
                         const group = createMessageWrapper(item);
-                        // 初始加载不加动画，避免全部消息一起动画
                         messagesDiv.appendChild(group);
                     });
                     scrollToBottom();
@@ -437,7 +457,6 @@
             throw new Error('重试次数用尽');
         }
 
-        // 悲观发送文本（新增动画）
         async function sendMessage() {
             const text = messageInput.value.trim();
             if (!text) return;
@@ -449,7 +468,7 @@
                 const newEntry = await addToHistory(entry);
 
                 const group = createMessageWrapper(newEntry);
-                group.classList.add('new-message'); // 触发出现动画
+                group.classList.add('new-message');
                 messagesDiv.appendChild(group);
                 scrollToBottom();
                 lastHistoryLength++;
@@ -462,7 +481,6 @@
             }
         }
 
-        // 悲观发送文件（新增动画）
         async function sendFiles() {
             const files = fileInput.files;
             if (files.length === 0) return;
@@ -487,7 +505,7 @@
                     const newEntry = await addToHistory(entry);
 
                     const group = createMessageWrapper(newEntry);
-                    group.classList.add('new-message'); // 触发出现动画
+                    group.classList.add('new-message');
                     messagesDiv.appendChild(group);
                     scrollToBottom();
                     lastHistoryLength++;
